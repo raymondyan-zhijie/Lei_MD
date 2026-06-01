@@ -209,7 +209,8 @@ Lei_MD/
 主线程 (GUI Thread)
   ├── UI 渲染、事件处理
   ├── 预览更新（频率限制 100ms）
-  └── 进度条更新
+  ├── 进度条更新
+  └── HistoryManager 单例（**所有 SQLite 写操作**）
 
 工作线程 (QThread)
   ├── ConverterWorker.run()
@@ -219,8 +220,59 @@ Lei_MD/
 批量模式:
   ├── 创建线程池 (QThreadPool)
   ├── 最多 4 个并行转换任务
-  └── 结果按完成顺序回传
+  └── 结果按完成顺序回传（**不发 DB**，经 signal 回到主线程写）
 ```
+
+#### 3.3.1 SQLite 并发策略（**WAL + Signal 串行化**）
+
+**问题背景**：ConverterWorker 跑在 QThread 上，如果直接在同一连接上 `INSERT`，主线程同时 `SELECT`（历史面板刷新）会触发 `database is locked`（SQLite 写锁是数据库级，**所有读阻塞**）。
+
+**解决方案 = WAL 模式 + Signal 写串行化（双保险）**：
+
+| 机制 | 作用 | 缓解比例 |
+|------|------|----------|
+| **PRAGMA journal_mode=WAL** | 读写并发不再互斥（读者不阻塞写者，反之亦然） | ~90% lock 场景 |
+| **`busy_timeout = 5000ms`** | 极端竞争下自动 retry 5s 而非立即抛异常 | ~9% 残余 |
+| **所有写操作走 `pyqtSignal` → 主线程执行** | 写操作完全串行化（单写者），消除所有竞态 | 100% 消除已知竞态 |
+
+**为什么双保险**：
+- WAL 单独使用已经能解决 99% 场景，但**写者间仍可能短暂冲突**（WAL 模式下写者串行，但写+checkpoint 可能与读短暂互斥）
+- Signal 串行化保证**逻辑上只有一个写者**（主线程），从源头消除竞态
+- 两者结合：写者绝对无冲突 + 读者与写者完全并发
+
+**实现要点**（详见 03 Task 1.9）：
+
+```python
+# src/core/history.py
+class HistoryManager(QObject):
+    # Signal: ConverterWorker 在任何线程 emit，槽永远在主线程执行
+    add_requested = pyqtSignal(dict)
+
+    def __init__(self):
+        super().__init__()
+        self._conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+        self._conn.execute("PRAGMA journal_mode=WAL")     # 关键 1
+        self._conn.execute("PRAGMA busy_timeout=5000")    # 关键 2
+        self._conn.execute("PRAGMA synchronous=NORMAL")   # WAL 推荐
+        # ...
+        self.add_requested.connect(self._on_add)           # 关键 3
+
+    def request_add(self, **kwargs):
+        """线程安全入口：ConverterWorker 调这个，不直接写 DB"""
+        self.add_requested.emit(kwargs)
+
+    @pyqtSlot(dict)
+    def _on_add(self, kwargs):
+        """槽：永远在主线程执行，写 DB"""
+        self._conn.execute("INSERT INTO history ...", ...)
+        self._conn.commit()
+        self._trim()
+```
+
+**性能验证**（04 §6 性能测试场景）：
+- 批量 10 个文件转换，转换完成时主线程写 10 条历史 → 串行 10 次 INSERT < 5ms
+- 用户拖动历史面板滚动 → 主线程读，不阻塞转换
+- WAL 文件自动 checkpoint：WAL > 1000 pages 时自动触发（SQLite 默认）
 
 ### 3.4 数据模型
 

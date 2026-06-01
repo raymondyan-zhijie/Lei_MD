@@ -290,6 +290,9 @@ def test_full_workflow(qapp, tmp_path, qtbot):
 | 配置文件损坏 | 备份 .bak 后重置默认 | (启动恢复，02 §6.4) |
 | SQLite 损坏 | 备份 .bak 后重建空表 | (启动恢复，02 §6.4) |
 | 并发 100 个文件拖入 | UI 不冻结，最多处理前 N 个 | (节流) |
+| **SQLite 并发写（4 线程同时 add）** | 无 `database is locked` 错误；WAL 模式生效 | (详见 [02 §3.3.1](02-architecture.md)) |
+| **SQLite 写+读并发** | 转换写入历史时，历史面板可正常滚动读取 | (同上) |
+| **SQLite 损坏恢复** | PRAGMA integrity_check 失败 → 备份 .bak + 重建 | `E_INTERNAL_002` |
 
 ## 8. 测试夹具样本文件
 

@@ -802,7 +802,7 @@ class ConfigManager:
 
 ### Task 1.9: 历史记录
 
-**Objective:** SQLite 存储转换历史
+**Objective:** SQLite 存储转换历史（**WAL + Signal 串行化**并发策略，详见 [02 §3.3.1](02-architecture.md)）
 
 **Files:**
 - Create: `src/core/history.py`
@@ -813,6 +813,7 @@ import time
 import os
 from pathlib import Path
 from dataclasses import dataclass
+from PySide6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 def _data_dir() -> Path:
     if os.name == "nt":
@@ -834,17 +835,42 @@ class HistoryEntry:
     error_msg: str
     created_at: str
 
-class HistoryManager:
+class HistoryManager(QObject):
+    """
+    SQLite 历史记录管理器。
+
+    并发模型（WAL + Signal 串行化）：
+    - PRAGMA journal_mode=WAL          读写并发不互斥
+    - PRAGMA busy_timeout=5000         极端竞争自动 retry
+    - 所有写入走 add_requested Signal   槽永远在主线程执行，写者唯一
+    - ConverterWorker 调 request_add()  不直接碰 DB
+    """
+    add_requested = pyqtSignal(dict)   # ConverterWorker 线程 emit，主线程槽
+
     def __init__(self, max_entries: int = 50):
+        super().__init__()
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         self._max = max_entries
-        self._conn = sqlite3.connect(str(DB_PATH))
-        # 启动时检查数据库完整性
+
+        # check_same_thread=False 是必要的：
+        # 我们用 Signal 强制主线程执行写入，所以连接本身可被多线程引用
+        # 但实际所有 _conn.execute(...) 只在主线程发生
+        self._conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+        self._conn.execute("PRAGMA journal_mode=WAL")      # 关键 1
+        self._conn.execute("PRAGMA busy_timeout=5000")     # 关键 2
+        self._conn.execute("PRAGMA synchronous=NORMAL")    # WAL 推荐
+
+        # 启动时检查数据库完整性（详见 02 §6.4 崩溃恢复）
         result = self._conn.execute("PRAGMA integrity_check").fetchone()
         if result[0] != "ok":
-            # 损坏：备份+重建
-            DB_PATH.rename(DB_PATH.with_suffix(".db.bak"))
-            self._conn = sqlite3.connect(str(DB_PATH))
+            # 损坏：备份 + 重建（对应 E_INTERNAL_002）
+            import shutil
+            shutil.copy2(DB_PATH, DB_PATH.with_suffix(f".db.bak.{int(time.time())}"))
+            DB_PATH.unlink()
+            self._conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA busy_timeout=5000")
+
         self._conn.execute("""
             CREATE TABLE IF NOT EXISTS history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -857,23 +883,47 @@ class HistoryManager:
                 created_at TEXT DEFAULT (datetime('now','localtime'))
             )
         """)
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_created_at ON history(created_at DESC)")
         self._conn.commit()
-    
-    def add(self, source_path: str, fmt: str, md_len: int,
-            duration_ms: int, success: bool, error: str = ""):
+
+        # 关键 3：Signal 连接到主线程槽
+        self.add_requested.connect(self._on_add)
+
+    def request_add(self, source_path: str, fmt: str, md_len: int,
+                    duration_ms: int, success: bool, error: str = ""):
+        """
+        线程安全入口。ConverterWorker 在 QThread 中调这个方法，
+        Signal 会把执行切回主线程的 _on_add 槽。
+        """
+        self.add_requested.emit({
+            "source_path": source_path,
+            "fmt": fmt,
+            "md_len": md_len,
+            "duration_ms": duration_ms,
+            "success": success,
+            "error": error,
+        })
+
+    @pyqtSlot(dict)
+    def _on_add(self, payload: dict):
+        """
+        实际写入槽。永远在主线程执行（QObject + Signal 的保证）。
+        """
         self._conn.execute(
             "INSERT INTO history (source_path, source_format, markdown_length, duration_ms, success, error_msg) VALUES (?,?,?,?,?,?)",
-            (source_path, fmt, md_len, duration_ms, success, error)
+            (payload["source_path"], payload["fmt"], payload["md_len"],
+             payload["duration_ms"], payload["success"], payload["error"])
         )
         self._conn.commit()
         self._trim()
-    
+
     def list(self, limit: int = 20) -> list[HistoryEntry]:
+        """读取。WAL 模式下读不阻塞写，且只在主线程调用所以无需额外保护。"""
         rows = self._conn.execute(
             "SELECT * FROM history ORDER BY id DESC LIMIT ?", (limit,)
         ).fetchall()
         return [HistoryEntry(*r) for r in rows]
-    
+
     def _trim(self):
         self._conn.execute("""
             DELETE FROM history WHERE id NOT IN (
@@ -881,6 +931,40 @@ class HistoryManager:
             )
         """, (self._max,))
         self._conn.commit()
+
+    def close(self):
+        """应用退出时调用，清理 WAL 文件 + 关闭连接。"""
+        try:
+            self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except sqlite3.Error:
+            pass
+        self._conn.close()
+```
+
+**ConverterWorker 中的使用示例**（03 Task 1.4 配合）：
+
+```python
+class ConverterWorker(QObject):
+    finished = pyqtSignal(str, bool, str, int)  # path, success, error, duration_ms
+
+    def __init__(self, history: HistoryManager):
+        super().__init__()
+        self._history = history  # 持有引用
+
+    def run(self):
+        # ... 转换逻辑 ...
+        result_md = MarkItDown().convert(self._path)
+        duration_ms = int((time.time() - start) * 1000)
+
+        # 关键：调 request_add() 而非 history.add()，让主线程写 DB
+        self._history.request_add(
+            source_path=self._path,
+            fmt=self._fmt,
+            md_len=len(result_md.markdown),
+            duration_ms=duration_ms,
+            success=True,
+        )
+        self.finished.emit(self._path, True, "", duration_ms)
 ```
 
 ---

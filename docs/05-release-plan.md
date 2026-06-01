@@ -3,6 +3,12 @@
 > **品牌：** leimengde  
 > **版本：** v0.1.0 | **日期：** 2026-06-01
 
+> **SSOT 索引**：本文档是以下主题的**权威定义**：
+> - §1 版本策略与里程碑
+> - §3 交付物形态（NSIS 安装包大小、下载渠道）
+>
+> 上游依赖更新流程详见 [06-dependency-update-strategy.md](06-dependency-update-strategy.md)。
+
 ---
 
 ## 1. 版本策略
@@ -139,7 +145,7 @@ jobs:
 - 🔒 完全离线运行，不联网不传数据
 
 ## 不支持的格式（v1.0）
-- 音频（MP3/WAV/OGG/FLAC）— 计划 v1.1+ 离线实现
+- 音频（MP3/WAV/OGG/FLAC）— 详见 [01-requirements.md F9a](01-requirements.md)
 
 ## 安装
 1. 下载 `Lei_MD-Setup-x.x.x.exe`
@@ -200,14 +206,14 @@ jobs:
 
 ### 5.1 上游依赖更新
 
-| 依赖 | 检查频率 | 策略 |
-|------|----------|------|
-| markitdown | 每周 | Dependabot PR（`>=0.1.0,<0.2.0` 上限内自动） |
-| PySide6 | 每月 | 手动评估（major 版本 v6→v7 延后 1 个 minor） |
-| Python | 每季度 | 新增版本 CI 矩阵 |
-| 底层库（PyMuPDF/python-docx 等） | 每周 | Dependabot `group: minor-and-patch` 自动 PR |
+> 完整的上游更新策略（markitdown / PySide6 / 底层库 / SemVer / 失败恢复）见 [docs/06-dependency-update-strategy.md](06-dependency-update-strategy.md)。本节为快速参考摘要。
 
-> 详细策略与失败恢复见 `docs/06-dependency-update-strategy.md`
+| 依赖 | 检查频率 | 策略 | 详见 |
+|------|----------|------|------|
+| markitdown | 每周 | Dependabot PR | 06 §3 |
+| PySide6 | 每月 | 手动评估 | 06 §4.1 |
+| Python | 每季度 | 新增版本 CI 矩阵 | 06 §4 |
+| 底层库（PyMuPDF/python-docx 等） | 每周 | Dependabot `group` | 06 §4.2 |
 
 ### 5.2 日常维护任务
 
@@ -320,7 +326,7 @@ body:
 - ConverterWorker 复用 converter 实例（性能优化）
 
 ### Not in v1.0 (planned v1.1+)
-- 音频转录 (MP3/WAV) — 离线 ffmpeg + whisper
+- 音频转录 (MP3/WAV) — 详见 [01-requirements.md F9a](01-requirements.md)
 - YouTube URL 输入
 
 ## [0.1.0] - 2026-06-30

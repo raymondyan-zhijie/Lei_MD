@@ -3,6 +3,13 @@
 > **品牌：** leimengde  
 > **版本：** v0.1.0 | **日期：** 2026-06-01
 
+> **SSOT 索引**：本文档是以下主题的**权威定义**：
+> - §1 技术选型（PySide6 + 关键依赖）
+> - §3 核心架构设计（线程模型、数据模型）
+> - §6 错误处理设计（5 大类错误码体系）
+>
+> 其他文档出现相关主题时**引用本文档**，不再重复定义。
+
 ---
 
 ## 1. 技术选型
@@ -43,13 +50,15 @@
 
 ### 1.3 关键依赖
 
-```
-markitdown[all]>=0.1.0       # 核心转换引擎
-PySide6>=6.7                  # Qt GUI 框架
-markdown>=3.6                 # Markdown 渲染 (非必须，可用 QTextBrowser)
-Pygments>=2.18                # 代码高亮 (预览窗口)
-darkdetect>=0.8               # Windows 深色模式检测
-```
+> 权威版本号与上限约束见 [`pyproject.toml`](../pyproject.toml)。本节仅列职责。
+
+| 依赖 | 职责 |
+|------|------|
+| `markitdown[all]` | 核心转换引擎（20+ 格式） |
+| `PySide6` | Qt6 GUI 框架 |
+| `markdown` | Markdown 渲染（备选 QTextBrowser） |
+| `Pygments` | 代码高亮（预览窗口） |
+| `darkdetect` | Windows 深色模式检测 |
 
 ## 2. 项目结构
 
@@ -241,7 +250,7 @@ CREATE TABLE history (
 - **路径安全**：输出文件写入前验证路径合法性（处理 Windows MAX_PATH 260 字符限制）
 - **API 密钥**：LLM API Key 不记录日志，存储在 `%APPDATA%\Lei_MD\config.json`（用户目录权限）
 - **子进程隔离**：转换在 QThread 中执行，异常不影响主程序
-- **音频格式**：v1.0 **不支持** MP3/WAV/OGG/FLAC，UI 拖入时给出明确提示（计划 v1.1+ 离线实现）
+- **音频格式**：v1.0 **不支持** MP3/WAV/OGG/FLAC（[详见 01 F9a](01-requirements.md)，v1.1+ 离线实现）
 - **离线运行**：安装后**不联网**，更新通过用户手动下载新安装包
 
 ## 6. 错误处理设计

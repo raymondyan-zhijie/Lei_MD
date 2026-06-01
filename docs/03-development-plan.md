@@ -11,6 +11,9 @@
 >  
 > **总时间预估:** v0.1.0 MVP 4-6 周（保守，非 2 周）
 
+> **SSOT 索引**：本文档是**开发任务分解**的权威定义。
+> 技术选型见 [02 §1](02-architecture.md)，错误处理见 [02 §6](02-architecture.md)，测试见 [04-testing-plan.md](04-testing-plan.md)，发布见 [05-release-plan.md](05-release-plan.md)，上游更新见 [06-dependency-update-strategy.md](06-dependency-update-strategy.md)。
+
 ---
 
 ## Phase 0: 项目初始化 (Sprint 0)
@@ -292,7 +295,7 @@ SUPPORTED_EXTENSIONS = {
     ".xlsx", ".xls", ".html", ".htm", ".epub",
     ".csv", ".json", ".xml", ".txt", ".md",
     ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
-    # 音频格式 v1.0 不支持（计划 v1.1+ 离线实现）
+    # 音频格式 v1.0 不支持（详见 01 F9a，v1.1+ 离线实现）
     # ".wav", ".mp3", ".ogg", ".flac",
     ".zip", ".msg", ".ipynb",
 }

@@ -47,7 +47,11 @@ class _ConvertRunnable(QRunnable):
 
     def __init__(self, converter: Any, file_path: str) -> None:
         super().__init__()
-        self._converter = converter
+        # v0.2.4 P2 审计 M3.8：保留原始 converter 引用，run() 入口才 clone_for_thread()
+        # 出来一个带独立 MarkItDown 引擎的实例。lazy clone 避免一次性 N 个实例
+        # 全部预构造（如果 batch 在派发阶段就被 cancel()，N 个 clone 浪费）。
+        self._source_converter = converter
+        self._converter: Any = None  # lazy-cloned in run()
         self._file_path = file_path
         self.signals = _ConvertRunnable._Signals()
         # v0.2.0 审计 M1.2：用 threading.Event 保证跨线程内存可见性
@@ -63,6 +67,15 @@ class _ConvertRunnable(QRunnable):
         if self._cancel_event.is_set():
             # cancel 在 start 之前被设
             return
+        # v0.2.4 P2 审计 M3.8：每个 runnable 持有独立 MarkItDown 引擎。
+        # 兼容没有 clone_for_thread 的替身 converter（_StubConverter / 测试 mock）——
+        # 这种情况下退化使用原 converter，与 v0.2.3 行为一致（单线程用同一个实例）。
+        if self._converter is None:
+            clone = getattr(self._source_converter, "clone_for_thread", None)
+            if callable(clone):
+                self._converter = clone()
+            else:
+                self._converter = self._source_converter
         try:
             md = self._converter.convert(self._file_path)
             self.signals.item_finished.emit(self._file_path, md)

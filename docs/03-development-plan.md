@@ -46,6 +46,7 @@ dependencies = [
     "darkdetect>=0.8,<0.9",
     "markdown>=3.6,<4.0",
     "Pygments>=2.18,<3.0",
+    "packaging>=24.0",  # 用于上游版本检查（src/core/updater.py）
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -72,11 +73,13 @@ where = ["src"]
 **Step 2: 创建 requirements.txt**
 
 ```
-markitdown[all]>=0.1.0
-PySide6>=6.7
-darkdetect>=0.8
-markdown>=3.6
-Pygments>=2.18
+# 与 pyproject.toml dependencies 保持一致（P2-2 锁版本）
+markitdown[all]>=0.1.0,<0.2.0
+PySide6>=6.7,<7.0
+darkdetect>=0.8,<0.9
+markdown>=3.6,<4.0
+Pygments>=2.18,<3.0
+packaging>=24.0
 ```
 
 **Step 3: 创建 .gitignore**
@@ -103,7 +106,7 @@ Thumbs.db
 **Step 4: 初始化 Git 并提交**
 
 ```bash
-cd /path/to/markitdown-gui
+cd /path/to/Lei_MD
 git init
 git add .
 git commit -m "chore: initialize project skeleton"
@@ -135,7 +138,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -153,7 +156,7 @@ jobs:
             ${{ runner.os }}-pip-
       - name: Run tests
         run: |
-          pytest tests/ -v --cov=src --cov-report=term
+          pytest tests/ -v --cov=src/ --cov-report=term
 
   lint:
     runs-on: ubuntu-latest
@@ -181,7 +184,7 @@ jobs:
           python scripts/build.py
       - uses: actions/upload-artifact@v4
         with:
-          name: markitdown-gui-win64
+          name: lei-md-win64
           path: dist/
 ```
 
@@ -212,7 +215,7 @@ def test_main_window_title(qapp):
     """Main window should have correct title."""
     from src.ui.main_window import MainWindow
     window = MainWindow()
-    assert "MarkItDown" in window.windowTitle()
+    assert "Lei_MD" in window.windowTitle()
 ```
 
 **Step 2: 实现 main.py**
@@ -235,8 +238,8 @@ from src.ui.main_window import MainWindow
 class MarkItDownApp(QApplication):
     def __init__(self, argv):
         super().__init__(argv)
-        self.setApplicationName("MarkItDown-GUI")
-        self.setOrganizationName("markitdown-gui")
+        self.setApplicationName("Lei_MD")
+        self.setOrganizationName("leimengde")
         self.window = MainWindow()
 
 def main():
@@ -254,13 +257,13 @@ from PySide6.QtCore import Qt
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("MarkItDown-GUI — 文件转 Markdown")
+        self.setWindowTitle("Lei_MD — 文件转 Markdown")
         self.resize(900, 650)
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
         layout.setAlignment(Qt.AlignCenter)
-        placeholder = QLabel("拖拽文件到此处开始转换\n\n支持 PDF · Word · Excel · PPT · HTML · EPUB · 图片 · 音频 · ZIP 等")
+        placeholder = QLabel("拖拽文件到此处开始转换\n\n支持 PDF · Word · Excel · PPT · HTML · EPUB · 图片 · ZIP 等\n（音频 MP3/WAV/OGG/FLAC 见 01 F9a，v1.1+ 离线支持）")
         placeholder.setAlignment(Qt.AlignCenter)
         layout.addWidget(placeholder)
 ```
@@ -398,8 +401,10 @@ class MarkItDownConverter:
         ".pdf", ".docx", ".doc", ".pptx", ".ppt",
         ".xlsx", ".xls", ".csv", ".html", ".htm",
         ".epub", ".jpg", ".jpeg", ".png", ".gif",
-        ".bmp", ".webp", ".wav", ".mp3", ".zip",
+        ".bmp", ".webp", ".zip",
         ".msg", ".ipynb", ".json", ".xml", ".txt", ".md",
+        # 音频格式 v1.0 不支持（详见 01 F9a，v1.1+ 离线实现）
+        # ".wav", ".mp3", ".ogg", ".flac",
     }
     
     def __init__(self, enable_plugins: bool = False):
@@ -1018,13 +1023,13 @@ def qapp():
 
 | 文件 | 状态 | 说明 |
 |------|------|------|
-|| `docs/01-requirements.md` | ✅ 已创建 | 需求文档 |
-|| `docs/02-architecture.md` | ✅ 已创建 | 架构设计 |
-|| `docs/03-development-plan.md` | ✅ 本文件 | 开发计划 |
-|| `docs/04-testing-plan.md` | ✅ 已创建 | 测试计划 |
-|| `docs/05-release-plan.md` | ✅ 已创建 | 发布与维护 |
-|| `docs/06-dependency-update-strategy.md` | ✅ 已创建 | 依赖更新策略（首次发布后） |
-|| `CODE_OF_CONDUCT.md` | ✅ 已创建 | 社区行为准则 |
-|| `pyproject.toml` | 🔜 | 项目配置 |
-|| `src/` | 🔜 | 源代码 |
+| `docs/01-requirements.md` | ✅ 已创建 | 需求文档 |
+| `docs/02-architecture.md` | ✅ 已创建 | 架构设计 |
+| `docs/03-development-plan.md` | ✅ 本文件 | 开发计划 |
+| `docs/04-testing-plan.md` | ✅ 已创建 | 测试计划 |
+| `docs/05-release-plan.md` | ✅ 已创建 | 发布与维护 |
+| `docs/06-dependency-update-strategy.md` | ✅ 已创建 | 依赖更新策略（首次发布后） |
+| `CODE_OF_CONDUCT.md` | ✅ 已创建 | 社区行为准则 |
+| `pyproject.toml` | 🔜 | 项目配置 |
+| `src/` | 🔜 | 源代码 |
 | `tests/` | 🔜 | 测试代码 |

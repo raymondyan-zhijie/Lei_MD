@@ -18,7 +18,7 @@
 
 | 方案 | 优点 | 缺点 | 结论 |
 |------|------|------|------|
-| **PySide6 (Qt)** | 原生外观、拖拽支持好、组件丰富、文档全 | 打包体积 ~80MB | ✅ **首选** |
+| **PySide6 (Qt)** | 原生外观、拖拽支持好、组件丰富、文档全 | 打包体积 ~120MB | ✅ **首选** |
 | Tkinter | Python 内置零依赖 | UI 丑、无现代控件 | ❌ |
 | Dear PyGui | GPU 加速、颜值高 | 生态不成熟、打包复杂 | ❌ |
 | Electron | 前端技术栈 | 体积 >200MB、Node 依赖重 | ❌ |
@@ -38,7 +38,7 @@
 │  PySide6 (Qt6)  —  窗口 / 拖拽 / 预览 / 设置       │
 ├──────────────────────────────────────────────────┤
 │                   业务逻辑层                       │
-│  Python 3.10+  —  转换编排 / 队列管理 / 历史记录    │
+│  Python 3.10~3.13  —  转换编排 / 队列管理 / 历史记录    │
 ├──────────────────────────────────────────────────┤
 │                   数据转换层                       │
 │  MarkItDown  —  文件解析 / Markdown 生成           │
@@ -103,7 +103,8 @@ Lei_MD/
 │   ├── 02-architecture.md      # 本文件
 │   ├── 03-development-plan.md  # 开发计划
 │   ├── 04-testing-plan.md      # 测试计划
-│   └── 05-release-plan.md      # 发布与维护计划
+│   ├── 05-release-plan.md      # 发布与维护计划
+│   └── 06-dependency-update-strategy.md  # 依赖更新策略（v1.0 后）
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml              # CI: 测试 + 类型检查
@@ -111,6 +112,9 @@ Lei_MD/
 ├── pyproject.toml              # 项目配置
 ├── requirements.txt            # 开发依赖
 ├── requirements-build.txt      # 打包依赖
+├── CODE_OF_CONDUCT.md          # 社区行为准则
+├── CHANGELOG.md                # 变更日志
+├── CONTRIBUTING.md             # 贡献指南
 ├── LICENSE                     # MIT
 └── README.md                   # 项目说明
 ```
@@ -143,11 +147,13 @@ Lei_MD/
 │       ┌──────────────────────────────┐              │
 │       │    ConfigManager             │              │
 │       │   (JSON: %APPDATA%\Lei_MD\  │              │
+│       │    config.json)              │
 │       └──────────────────────────────┘              │
 │                                                     │
 │       ┌──────────────────────────────┐              │
 │       │    HistoryManager            │              │
 │       │   (SQLite: %APPDATA%\Lei_MD\ │              │
+│       │    history.db)               │
 │       └──────────────────────────────┘              │
 └─────────────────────────────────────────────────────┘
 ```

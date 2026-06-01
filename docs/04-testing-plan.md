@@ -24,7 +24,7 @@
 | 维度 | 配置 |
 |------|------|
 | 操作系统 | Windows 10 (22H2), Windows 11 (23H2) |
-| Python | 3.10, 3.11, 3.12 |
+| Python | 3.10, 3.11, 3.12, 3.13 |
 | CI | GitHub Actions `windows-latest` |
 | 本地 | 开发者 Windows 11 Pro Workstation |
 
@@ -98,10 +98,11 @@ class TestConfig:
 
     def test_llm_key_not_logged(self, tmp_config):
         """API key 不应出现在日志中"""
+        secret = "sk-secret-test-value-12345"
         mgr = ConfigManager(config_dir=tmp_config)
-        mgr.update(llm_api_key="sk-secret-123")
+        mgr.update(llm_api_key=secret)
         cfg = mgr.get()
-        assert cfg.llm_api_key == "sk-secret-123"
+        assert cfg.llm_api_key == secret
 ```
 
 ### 3.3 历史记录测试 (`tests/test_history.py`)
@@ -174,7 +175,7 @@ class TestBatchWorker:
 class TestMainWindow:
     def test_window_title(self, qapp):
         window = MainWindow()
-        assert "MarkItDown" in window.windowTitle()
+        assert "Lei_MD" in window.windowTitle()
 
     def test_initial_button_state(self, qapp):
         window = MainWindow()

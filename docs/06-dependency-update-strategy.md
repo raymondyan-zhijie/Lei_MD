@@ -161,8 +161,9 @@ v MAJOR . MINOR . PATCH
 | 改动 | 版本 bump | 示例 |
 |------|-----------|------|
 | Bug 修复、性能优化、文档更新 | **PATCH** (0.0.X) | v1.0.0 → v1.0.1 |
-| 新增 P1 功能、底层库 minor 升级、markitdown 0.1.x 升级 | **MINOR** (0.X.0) | v1.0.0 → v1.1.0 |
-| GUI 重写、配置文件 schema 不兼容、markitdown 0.1 → 0.2 | **MAJOR** (X.0.0) | v1.x.x → v2.0.0 |
+| 新增 P1 功能、markitdown 0.1.x → 0.1.y (patch) | **PATCH** (0.0.X) | v1.0.0 → v1.0.1 |
+| 新增 P2 进阶功能、底层库 minor 升级、markitdown 0.1.x → 0.2.0 (minor) | **MINOR** (0.X.0) | v1.0.0 → v1.1.0 |
+| GUI 重写、配置文件 schema 不兼容、markitdown 0.x → 1.0 | **MAJOR** (X.0.0) | v1.x.x → v2.0.0 |
 
 ### 5.3 自动化
 

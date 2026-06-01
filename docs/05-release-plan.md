@@ -23,11 +23,13 @@
 
 ### 里程碑
 
+> **总时间预估**（v0.1.0 MVP）: 4-6 周（保守估算，详见 [03-development-plan.md](03-development-plan.md)）
+
 ```
-v0.1.0  ← MVP: 拖拽转换 + 预览 + 导出         (Sprint 1-2, 2 周)
-v0.2.0  ← 批量/设置/LLM/深色/中文              (Sprint 3, 1 周)
-v0.3.0  ← 历史面板/YouTube/插件                (Sprint 4, 1 周)
-v1.0.0  ← 打包/安装包/文档/第一正式版          (Sprint 5, 1 周)
+v0.1.0  ← MVP: 拖拽转换 + 预览 + 导出         (Sprint 1-2, 4-6 周)
+v0.2.0  ← 批量/设置/LLM/深色/中文              (Sprint 3)
+v0.3.0  ← 历史面板/YouTube/插件                (Sprint 4)
+v1.0.0  ← 打包/安装包/文档/第一正式版          (Sprint 5)
 v1.x.0  ← 持续迭代                             (每月)
 ```
 
@@ -96,8 +98,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/MarkItDown-GUI.exe
-            dist/MarkItDown-GUI-Setup-*.exe
+            dist/Lei_MD.exe
+            dist/Lei_MD-Setup-*.exe
           generate_release_notes: true
 ```
 
@@ -119,7 +121,7 @@ jobs:
 |------|------|
 | **GitHub Releases** | 主渠道，自动发布（`https://github.com/raymondyan-zhijie/Lei_MD/releases`） |
 | **应用内「检查更新」** | 启动时调 `https://api.github.com/repos/raymondyan-zhijie/Lei_MD/releases/latest` 提示用户 |
-| **官网** (未来) | `markitdown-gui.leimengde.net` |
+| **官网** (未来) | `lei-md.leimengde.net` |
 | **WinGet** (未来) | `winget install leimengde.Lei_MD` |
 | **Scoop** (未来) | `scoop install lei-md` |
 

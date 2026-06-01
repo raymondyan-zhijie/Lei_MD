@@ -85,7 +85,8 @@ class ConfigManager:
         if not cfg_file.exists():
             return AppConfig()
         try:
-            data: dict[str, Any] = json.loads(cfg_file.read_text(encoding="utf-8"))
+            # v0.2.1 hotfix（H3）：用 utf-8-sig 自动剥离 BOM（Windows 记事本默认存 BOM）
+            data: dict[str, Any] = json.loads(cfg_file.read_text(encoding="utf-8-sig"))
         except (json.JSONDecodeError, UnicodeDecodeError, OSError):
             # 损坏：备份原文件 + 写默认（让用户重开就能跑）
             self._backup_and_reset()

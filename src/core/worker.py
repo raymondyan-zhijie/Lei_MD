@@ -81,6 +81,10 @@ class ConversionWorker(QThread):
 
             self.progress.emit(90)
             self.progress.emit(100)
+            # v0.2.0 hotfix（H4）：emit 成品前再检查一次取消，避免 UI 显示"已取消"但 preview 是满的
+            if self._cancel_event.is_set():
+                error_msg = "E_SYS_001"  # 用户取消
+                return
             self.finished_with_md.emit(md)
             success = True
         except Exception as e:

@@ -123,6 +123,8 @@ class MainWindow(QMainWindow):
 
         # 当前活跃 worker
         self._active_worker: ConversionWorker | None = None
+        # v0.2.0 Sprint 3 hotfix（H2）：批量转换时取消按钮要能取消 batch
+        self._active_batch: "BatchWorker | None" = None
 
     # -------- slots --------
 
@@ -195,11 +197,17 @@ class MainWindow(QMainWindow):
         )
 
     def _on_cancel_clicked(self) -> None:
-        if self._active_worker is not None:
+        # v0.2.0 Sprint 3 hotfix（H2）：先看 batch（最后启动的活动），再看 single worker
+        if self._active_batch is not None:
+            self._active_batch.cancel()
+            self.status.showMessage("已取消批量转换")
+        elif self._active_worker is not None:
             self._active_worker.cancel()
             self.status.showMessage("已取消")
-            self.progress_bar.setVisible(False)
-            self.cancel_button.setVisible(False)
+        else:
+            return  # 没活动，点了也不该有副作用
+        self.progress_bar.setVisible(False)
+        self.cancel_button.setVisible(False)
 
     def _cleanup_worker(self, worker: ConversionWorker) -> None:
         if self._active_worker is worker:

@@ -2,7 +2,8 @@
 
 按 03 §Task 1.4：
 - QThread 子类，后台调 Converter.convert()，避免阻塞主线程
-- signals: started, progress(int 0~100), finished(str markdown), error(ConversionError)
+- signals: started, progress(int 0~100), finished(str markdown),
+  error(ConversionError), job_done(...)
 - 异常不崩线程，全部转 error signal
 - cancel() 可中断（设 cancel_event，run() 中检查）
 
@@ -10,7 +11,15 @@
 - 接受任意有 .convert(path) -> str 的对象（鸭子类型），便于 mock/Stub
 - 进度在 60% / 90% / 100% 报告（markitdown 不暴露原生进度条，模拟）
 - 不在 Worker 里捕获 traceback（日志交给 caller，UI 显示错误码即可）
+
+Terminal signal 语义（v0.2.2 audit M3.2）：
+- `job_done` 是**唯一**的 terminal signal，每次 run() 都发（成功/异常/取消）
+- `finished_with_md`：仅成功时发（cancel 路径不发）
+- `error`：仅真实转换异常时发（cancel 不发，走 job_done(success=False)）
+- 消费者（如 HistoryManager._on_job_done）应以 job_done 为权威事实源
+
 """
+
 from __future__ import annotations
 
 import threading

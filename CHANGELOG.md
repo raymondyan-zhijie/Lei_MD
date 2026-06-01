@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-01
+
+Sprint 3 完成（Task 2.1 ~ 2.6 + MainWindow 集成）。**88/88 测试绿灯**（v0.2.0-rc1 的 58 + 新增 30）。
+
+### Added
+
+- **SettingsDialog** (`src/ui/settings_dialog.py`, Task 2.1)
+  - 模态对话框，注入 ConfigManager 读写
+  - 5/5 测试：构造载入 / accept 持久化 / cancel 不改 / 字段类型映射 / reset_to_defaults
+- **BatchWorker** (`src/core/batch_worker.py`, Task 2.2)
+  - QThreadPool + QRunnable 批量并行转换
+  - signals: `progress(done, total)` / `finished()` / `item_failed(path, err)`
+  - cancel() 立即发 finished，剩余路径标记 cancelled
+  - 单文件失败不影响其他（错误汇总通过 `item_failed`）
+- **HistoryPanel** (`src/ui/history_panel.py`, Task 2.3)
+  - 表格视图：时间/源文件/输出文件/状态
+  - 搜索框按 source_path 子串过滤
+  - 双击行触发 `file_selected(path)` signal（MainWindow 接住走 worker）
+- **深色模式** (`src/ui/styles.py`, Task 2.5)
+  - `darkdetect` 检测系统主题
+  - `apply_theme('dark'|'light'|'system')` 切换 QPalette + QSS
+  - `ThemeManager` 监听系统变更，外部回调通知
+- **中文界面** (`src/ui/i18n.py` + `src/resources/locales/zh_CN.json`, Task 2.6)
+  - `Translator` 类 + 模块级默认 + `tr(key)` helper
+  - `set_locale('zh_CN'|'en')` 加载对应 JSON；缺失键 fallback 到 key 本身
+  - 53 条 zh_CN 翻译（菜单/状态/设置/历史/错误码）
+
+### Changed
+
+- **MainWindow 集成** (`src/ui/main_window.py`)
+  - 新增 `config_manager: ConfigManager | None` 注入
+  - 启动时 `apply_theme(config.theme)` + `set_locale(config.language)`
+  - 菜单栏：文件（设置/退出） / 视图（历史记录） / 帮助（关于）
+  - 工具栏"全部转换" 按钮 → 启动 BatchWorker 用 `config.batch_concurrency`
+  - 设置变更后自动 apply_theme
+  - 历史面板作为非模态对话框从"视图 > 历史记录"打开
+- **FileList** (`src/ui/file_list.py`)
+  - 新增 `all_paths() -> list[str]`，批量转换用
+
+### Test Coverage
+
+新增 30 个测试（73 → 88/88）：
+- test_settings_dialog.py: 5
+- test_batch_worker.py: 5
+- test_history_panel.py: 5
+- test_styles.py: 3
+- test_i18n.py: 4
+- test_mainwindow_integration.py: 3
+- test_batch_integration.py: 3
+- test_i18n_integration.py: 2
+
 ## [0.2.0-rc1] - 2026-06-01
 
 Sprint 2 完成（Task 1.8 + Task 1.9）。**58/58 测试绿灯**（v0.1.1 的 44 + 新增 14）。

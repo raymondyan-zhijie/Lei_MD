@@ -11,10 +11,15 @@ SSOT：01 §5.x、02 §3.3、04 §2 配置文件
 from __future__ import annotations
 
 import json
+import logging
 import os
+import shutil
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any
+
+
+_logger = logging.getLogger(__name__)
 
 
 def config_dir() -> Path:
@@ -64,6 +69,77 @@ class AppConfig:
     llm_api_key: str = ""
     llm_model: str = "gpt-4o"
 
+    # ---- v0.2.3 P2 audit (M6.3) 字段类型/取值校验 ----
+    # 故意只校验已知"会被攻击者/老版本写坏"的字段；output_dir 这种
+    # 业务枚举但 forward-compat 友好（值为 "same" / "custom" / 未来
+    # 其它合法值）保持宽松，避免阻塞 schema 演进。
+    _LANGUAGE_VALUES = frozenset({"system", "zh_CN", "en_US"})
+    _THEME_VALUES = frozenset({"system", "light", "dark"})
+
+    def __post_init__(self) -> None:
+        """字段类型/取值校验。失败 → TypeError，触发 _load 的备份复位路径。
+
+        设计要点（v0.2.3 audit M6.3）：
+        - bool 必须是 bool，不能是 int（避免 0/1 兼容陷阱——dataclass 默认不拒 int）
+        - 数值字段给上下界，防止 max_history="fifty" / batch_concurrency=99999 这类
+          半坏数据被静默接受
+        - 枚举字段给白名单，language / theme 错值立即触发复位（不"宽容"）
+        - LLM 三字段强制 str（防 list/dict 注入；空字符串允许，代表"未配置"）
+        """
+        if not isinstance(self.output_dir, str):
+            raise TypeError(f"output_dir must be str, got {type(self.output_dir).__name__}")
+        if not isinstance(self.custom_output_dir, str):
+            raise TypeError(
+                f"custom_output_dir must be str, got {type(self.custom_output_dir).__name__}"
+            )
+        # bool 必须是真正的 bool（int 在 dataclass 层面会被静默接受）
+        if not isinstance(self.auto_convert, bool):
+            raise TypeError(
+                f"auto_convert must be bool, got {type(self.auto_convert).__name__}"
+            )
+        if not isinstance(self.max_history, int) or isinstance(self.max_history, bool):
+            raise TypeError(
+                f"max_history must be int, got {type(self.max_history).__name__}"
+            )
+        if not (1 <= self.max_history <= 999):
+            raise TypeError(
+                f"max_history must be in [1, 999], got {self.max_history}"
+            )
+        if not isinstance(self.language, str):
+            raise TypeError(f"language must be str, got {type(self.language).__name__}")
+        if self.language not in self._LANGUAGE_VALUES:
+            raise TypeError(
+                f"language must be one of {sorted(self._LANGUAGE_VALUES)}, "
+                f"got {self.language!r}"
+            )
+        if not isinstance(self.theme, str):
+            raise TypeError(f"theme must be str, got {type(self.theme).__name__}")
+        if self.theme not in self._THEME_VALUES:
+            raise TypeError(
+                f"theme must be one of {sorted(self._THEME_VALUES)}, "
+                f"got {self.theme!r}"
+            )
+        if not isinstance(self.batch_concurrency, int) or isinstance(self.batch_concurrency, bool):
+            raise TypeError(
+                f"batch_concurrency must be int, got {type(self.batch_concurrency).__name__}"
+            )
+        if not (1 <= self.batch_concurrency <= 32):
+            raise TypeError(
+                f"batch_concurrency must be in [1, 32], got {self.batch_concurrency}"
+            )
+        if not isinstance(self.llm_api_base, str):
+            raise TypeError(
+                f"llm_api_base must be str, got {type(self.llm_api_base).__name__}"
+            )
+        if not isinstance(self.llm_api_key, str):
+            raise TypeError(
+                f"llm_api_key must be str, got {type(self.llm_api_key).__name__}"
+            )
+        if not isinstance(self.llm_model, str):
+            raise TypeError(
+                f"llm_model must be str, got {type(self.llm_model).__name__}"
+            )
+
 
 class ConfigManager:
     """配置读写管理器。
@@ -87,29 +163,68 @@ class ConfigManager:
         try:
             # v0.2.1 hotfix（H3）：用 utf-8-sig 自动剥离 BOM（Windows 记事本默认存 BOM）
             data: dict[str, Any] = json.loads(cfg_file.read_text(encoding="utf-8-sig"))
-        except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+            # v0.2.3 P2 audit (M6.2)：json.loads 可能返回合法但非 dict 的值
+            # （list / str / int / bool / null）。后续 data.items() 会抛
+            # AttributeError → 杀启动。显式拒绝 + 抛 ValueError，被同 try
+            # 块 except 接住走复位路径。
+            if not isinstance(data, dict):
+                raise ValueError("config root must be a JSON object")
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError, ValueError, AttributeError) as e:
             # 损坏：备份原文件 + 写默认（让用户重开就能跑）
+            _logger.warning(
+                "config file %s is unreadable (%s: %s) — backing up and resetting to defaults",
+                cfg_file,
+                type(e).__name__,
+                e,
+            )
             self._backup_and_reset()
             return AppConfig()
         # 过滤未知字段（forward-compat）
         known = {k: v for k, v in data.items() if k in AppConfig.__dataclass_fields__}
         try:
             return AppConfig(**known)
-        except TypeError:
-            # 字段类型错（schema 升级）→ 备份复位
+        except TypeError as e:
+            # v0.2.3 P2 audit (M6.3)：AppConfig.__post_init__ 抛 TypeError
+            # 表示字段类型/取值错（schema 不匹配 / 半坏数据）→ 备份复位。
+            # 之前 except 只接住"未知 kwargs"导致的 TypeError；现在
+            # __post_init__ 的类型错也走同一条复位路径，行为统一。
+            # 日志带具体错信息（字段名/类型），方便用户排错。
+            _logger.warning(
+                "config schema/type mismatch in %s (%s: %s) — backing up and resetting to defaults",
+                cfg_file,
+                type(e).__name__,
+                e,
+            )
             self._backup_and_reset()
             return AppConfig()
 
     def _backup_and_reset(self) -> None:
-        """把损坏的 config.json 备份为 .json.bak，然后写一份默认配置。"""
+        """把损坏的 config.json 备份为 .json.bak，然后写一份默认配置。
+
+        v0.2.3 P2 audit (M6.4) 修复：原实现用 cfg_file.rename()，两个隐患：
+        1) Windows rename 不允许覆盖已存在的 .json.bak（POSIX 允许），
+           OSError → 直接 unlink 原文件 → 损坏内容没保留。
+        2) 跨卷 rename 抛 OSError（exdev），同 1 后果。
+        新实现三级 fallback，保证"先有 .bak 副本，再删原文件"：
+        os.replace（原子 + Windows 友好 + 允许覆盖）→ shutil.move（跨卷）
+        → unlink（最后兜底；此时 .bak 仍不存在，但至少不让坏文件留在原位）。
+        """
         cfg_file = config_file()
+        bak_file = cfg_file.with_suffix(".json.bak")
+        # 1) 优先 os.replace（原子，Windows / POSIX 都能覆盖已存在的 .bak）
         try:
-            cfg_file.rename(cfg_file.with_suffix(".json.bak"))
+            os.replace(cfg_file, bak_file)
         except OSError:
+            # 2) 跨卷：shutil.move 内部会 fallback 到 copy+remove
             try:
-                cfg_file.unlink()
+                shutil.move(str(cfg_file), str(bak_file))
             except OSError:
-                pass
+                # 3) 终极兜底：删原文件（至少不阻塞启动；坏内容可能在
+                #    下次 save 时被默认覆盖；用户无 .bak 可恢复）
+                try:
+                    cfg_file.unlink()
+                except OSError:
+                    pass
         # 写默认（用 AppConfig 自己的 asdict）
         try:
             cfg_file.write_text(

@@ -18,7 +18,9 @@ DEFAULT_LOCALE = "en"
 # v0.2.5 P3 audit (L1) 白名单：允许通过 set_locale() 显式切换的 locale。
 # 不在白名单里的输入一律 fallback 到 DEFAULT_LOCALE，避免路径拼接（f"{locale}.json"）
 # 时把攻击者控制的字符串拼到 _LOCALES_DIR 里。
-VALID_LOCALES: frozenset[str] = frozenset({"system", "zh_CN", "en_US"})
+# v0.2.7 P0：加 "en" 让英文用户（DEFAULT_LOCALE）启动时不打 warning。
+# "en" 表示 keys 不翻译、UI 字符串保持源代码硬编码（tr() 在 v0.2.7 仍未接 UI）。
+VALID_LOCALES: frozenset[str] = frozenset({"system", "en", "zh_CN", "en_US"})
 
 # Built-in resource directory
 _LOCALES_DIR = Path(__file__).resolve().parent.parent / "resources" / "locales"

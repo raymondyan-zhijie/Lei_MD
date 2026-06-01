@@ -23,6 +23,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
+    QApplication,
     QMainWindow,
     QProgressBar,
     QPushButton,
@@ -284,7 +285,21 @@ class MainWindow(QMainWindow):
             # finalize 走 QTimer.singleShot(0)），手动清引用避免 dangling。
             self._active_batch = None
 
-        # 5) 无论 wait 是否超时，都 accept event（spec 异常路径语义）
+        # 5) 让主线程事件循环消化掉所有 queued job_done / finished signal
+        #    （worker 退出前 emit 的信号走 QueuedConnection，必须在 history.close()
+        #    前处理完，否则 _on_add 会用已 close 的 _conn 报 ProgrammingError）。
+        QApplication.processEvents()
+
+        # 6) 关闭 SQLite 连接（WAL checkpoint + 释放文件锁）。
+        #    v0.2.7 P0（v0.2.6 复审 #1）：之前 close() 从未被调用，
+        #    每次退出都遗留 -wal/-shm 侧车文件 + 文件描述符直到 GC。
+        if self._history is not None:
+            try:
+                self._history.close()
+            except Exception:  # noqa: BLE001
+                _log.warning("MainWindow.closeEvent: HistoryManager.close() failed", exc_info=True)
+
+        # 7) 无论 wait 是否超时，都 accept event（spec 异常路径语义）
         event.accept()
 
     # -------- 菜单栏（v0.2.0 Sprint 3 集成）--------
@@ -353,7 +368,23 @@ class MainWindow(QMainWindow):
     # -------- 批量转换（v0.2.0 Sprint 3 集成）--------
 
     def _start_batch(self) -> None:
-        """用 ConfigManager.batch_concurrency 启动 BatchWorker。"""
+        """用 ConfigManager.batch_concurrency 启动 BatchWorker。
+
+        v0.2.7 P1 审计（v0.2.6 复审 #3）：运行中守卫 —— 二次点击"全部转换"会
+        覆盖 ``self._active_batch`` 引用，旧 bw 的 progress/failed signal 仍
+        连到旧 slot（lambda 闭包捕获旧 bw，但 progress slot 走 ``self._on_batch_progress``），
+        导致状态条上 done 计数被新 / 旧 batch 的 progress 信号交织刷新，看起来
+        像 "interleaved progress"。
+
+        修复：入口先 ``self._active_batch.cancel()``，把旧 batch 协作式终止
+        （不再派新任务、finalize 路径正常走完），再启动新 batch。状态栏提示
+        用户"已取消上一次批量"。
+        """
+        # v0.2.7 P1：运行中守卫 —— 先 cancel 旧 batch，避免引用覆盖 + 信号交织
+        if self._active_batch is not None:
+            self._active_batch.cancel()
+            self.status.showMessage("已取消上一次批量")
+
         paths = self.file_list.all_paths()
         if not paths:
             self.status.showMessage("文件列表为空")

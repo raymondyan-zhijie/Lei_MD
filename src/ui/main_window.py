@@ -17,9 +17,11 @@ v0.1.1 升级（异步转换 + 进度 + 取消）：
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QMainWindow,
     QProgressBar,
@@ -29,6 +31,9 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
 )
+
+# v0.2.3 P2 审计 M4.1：closeEvent 路径下会等 worker 2000ms，超时要 log.warning。
+_log = logging.getLogger(__name__)
 
 from src.core.batch_worker import BatchWorker
 from src.core.config import ConfigManager
@@ -212,6 +217,71 @@ class MainWindow(QMainWindow):
     def _cleanup_worker(self, worker: ConversionWorker) -> None:
         if self._active_worker is worker:
             self._active_worker = None
+        # v0.2.3 P2 审计 M4.1：QThread 必须显式 deleteLater()，
+        # 否则 force-terminate 时 Qt 会报
+        # "QThread: Destroyed while thread is still running"。
+        # deleteLater 会在事件循环下一拍把 QObject 子树释放掉。
+        worker.deleteLater()
+
+    # -------- 生命周期（v0.2.3 P2 审计 M4.1 / M4.2）--------
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """窗口关闭：协作式停掉 batch / worker，避免 QThread 被 force-terminate。
+
+        顺序（按 spec）：
+          1) _active_batch?.cancel()   — BatchWorker.cancel() 把状态置 CANCELLED
+             并在事件循环下一拍 emit finished。
+          2) _active_worker?.cancel()   — QThread.cancel_event.set()，run() 跑
+             到检查点会自然 return。
+          3) worker.wait(2000)          — 最多 2s 等 QThread 真正退出。
+          4) bw._pool.waitForDone(2000) — 最多 2s 等 BatchWorker 内部 QThreadPool
+             排空已派发的 _ConvertRunnable。
+          5) accept event               — 无论 wait 是否超时都 accept，避免用户卡死。
+             超时只 log.warning（属于"异常路径"）。
+
+        引用清理：closeEvent 路径下 _active_batch 可能还没被 _on_batch_finished
+        清掉（cancel 触发的 finalize 用了 QTimer.singleShot(0, ...)），手动置 None
+        避免 dangling pointer。
+        """
+        # 1) batch 取消（None-safe）
+        if self._active_batch is not None:
+            try:
+                self._active_batch.cancel()
+            except RuntimeError:  # bw 已 deleteLater()，被 PyQt 哨兵抛出
+                pass
+
+        # 2) worker 取消（None-safe）
+        if self._active_worker is not None:
+            try:
+                self._active_worker.cancel()
+            except RuntimeError:  # 同上
+                pass
+
+        # 3) 等 QThread 真正结束（最多 2s）
+        if self._active_worker is not None:
+            if not self._active_worker.wait(2000):
+                _log.warning(
+                    "MainWindow.closeEvent: ConversionWorker 2000ms 内未退出，"
+                    "将强制 accept event 避免卡死用户"
+                )
+
+        # 4) 等 BatchWorker 的 QThreadPool 排空（最多 2s）
+        if self._active_batch is not None:
+            try:
+                pool = self._active_batch._pool  # noqa: SLF001
+            except AttributeError:
+                pool = None
+            if pool is not None and not pool.waitForDone(2000):
+                _log.warning(
+                    "MainWindow.closeEvent: BatchWorker._pool 2000ms 内未排空，"
+                    "将强制 accept event 避免卡死用户"
+                )
+            # closeEvent 路径下 _on_batch_finished 还没跑（cancel 触发的
+            # finalize 走 QTimer.singleShot(0)），手动清引用避免 dangling。
+            self._active_batch = None
+
+        # 5) 无论 wait 是否超时，都 accept event（spec 异常路径语义）
+        event.accept()
 
     # -------- 菜单栏（v0.2.0 Sprint 3 集成）--------
 
@@ -286,7 +356,10 @@ class MainWindow(QMainWindow):
         concurrency = max(1, int(self._config.get().batch_concurrency))
         bw = BatchWorker(self._converter, paths, concurrency=concurrency)
         bw.progress.connect(self._on_batch_progress)
-        bw.finished.connect(self._on_batch_finished)
+        # v0.2.3 P2 审计 M4.1：finished 结束后要把 BatchWorker deleteLater()，
+        # 否则下一次 _start_batch 持有的旧 bw 还活着（内存泄漏 / dangling）。
+        # 通过 lambda 透传 bw 引用，slot 内部用完即弃。
+        bw.finished.connect(lambda b=bw: self._on_batch_finished(b))
         bw.item_failed.connect(self._on_batch_item_failed)
         self._active_batch = bw
         bw.start()
@@ -299,11 +372,15 @@ class MainWindow(QMainWindow):
         pct = int(done * 100 / max(total, 1))
         self.progress_bar.setValue(pct)
 
-    def _on_batch_finished(self) -> None:
+    def _on_batch_finished(self, bw: BatchWorker) -> None:
         self.status.showMessage("批量转换完成")
         self.progress_bar.setVisible(False)
         self.cancel_button.setVisible(False)
-        self._active_batch = None
+        if self._active_batch is bw:
+            self._active_batch = None
+        # v0.2.3 P2 审计 M4.1：BatchWorker 是 QObject 树根，必须 deleteLater()，
+        # 否则它内部的 QThreadPool + 已派发的 _ConvertRunnable 不会被回收。
+        bw.deleteLater()
 
     def _on_batch_item_failed(self, path: str, err: str) -> None:
         # 当前简单记到状态栏；v0.3 计划加入错误汇总面板

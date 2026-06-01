@@ -30,6 +30,33 @@
 3. Qt Designer 可加速 UI 开发
 4. PyInstaller 打包成熟
 
+### 1.1.1 备选方案评估：QWebEngineView（待评估，v2.0+ 路线图）
+
+> 用户反馈提到「评估引入 QWebEngineView 的可能性」。本节作为**技术雷达登记**，v1.0 不实施，v2.0+ 重新评估。
+
+**QWebEngineView 是什么**：PySide6 自带的 Chromium 嵌入式组件，可渲染完整 HTML/CSS/JS（用于 Markdown 预览会更接近 GitHub 渲染效果）。
+
+| 维度 | 当前方案 `QTextBrowser` | 备选 `QWebEngineView` |
+|------|------------------------|----------------------|
+| 渲染效果 | 基础 Markdown→HTML（无 JS、无复杂 CSS） | 完整 GitHub-Flavored Markdown 渲染 |
+| 打包体积 | PySide6 基线 ~120MB | **+ 80-150MB**（Chromium 内核）→ 总 ~200-270MB |
+| 启动时间 | < 1s | + 1-2s（Chromium 初始化） |
+| 内存占用 | < 100MB | + 100-200MB |
+| 安全风险 | 极低（仅本地 HTML） | **高**（Chromium 历史漏洞多；离线运行原则下需禁用网络，仍需关注渲染引擎 0day） |
+| 维护成本 | 低 | 中（Chromium 版本对齐 PySide6 发布周期） |
+
+**v1.0 决定**：**不引入**，保持 QTextBrowser。理由：
+1. 违反 NF3「大而全单安装包 ~400-500MB」原则（再 + 100MB = 550-650MB）
+2. 违反「完全离线运行」安全姿态（Chromium 即使禁用网络也是攻击面）
+3. 当前 QTextBrowser + 自定义 Markdown→HTML 已能满足 80% 用户需求
+
+**v2.0+ 重评估条件**：
+- 大量用户反馈「Markdown 渲染效果差」（量化指标：>20% issue 标签 `rendering-quality`）
+- PySide6 发布新版本将 QWebEngineView 体积优化至 < 50MB
+- 用户接受更大的安装包换取完整 GitHub 渲染
+
+详见 [05 §5.3 长期路线图](05-release-plan.md)。
+
 ### 1.2 技术栈总览
 
 ```
@@ -222,22 +249,66 @@ CREATE TABLE history (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-# 配置 (JSON)
+# 配置 (JSON) — 需含 schema_version 字段以支持迁移
 {
-    "output_dir": "same",           // same | custom_path
+    "config_version": 1,             // 必填，ConfigManager 据此选择加载/迁移策略
+    "output_dir": "same",            // same | custom_path
     "custom_output_dir": "",
-    "auto_convert": true,           // 拖入后自动转换
+    "auto_convert": true,            // 拖入后自动转换
     "max_history": 50,
-    "language": "system",           // system | zh_CN | en_US
-    "theme": "system",              // system | light | dark
+    "language": "system",            // system | zh_CN | en_US
+    "theme": "system",               // system | light | dark
     "llm": {
         "api_base": "",
-        "api_key": "",
+        "api_key": "",               // 不记录日志；详见 02 §5 安全考虑
         "model": "gpt-4o"
     },
     "batch_concurrency": 4
 }
 ```
+
+### 3.4.1 config.json Schema 版本管理
+
+**目标**：配置结构随版本迭代可能变化（新增/废弃/重命名字段），必须保证老用户的 `config.json` 不会因为升级而崩溃。
+
+**Schema 版本约定**：
+
+| 版本 | 范围 | 策略 |
+|------|------|------|
+| `config_version: 1` | v1.0 ~ v1.x | 基线版本，直接加载 |
+| `config_version: 2+` | 未来 | 启动时检测 → 调用 `migrate(old_version, data)` 链式迁移 |
+| 缺失字段 | 任何版本 | 视为 `config_version: 0`（v1.0 之前开发期）→ 用默认值补全 |
+
+**迁移函数**（伪代码，详见 03 Task 1.8）：
+
+```python
+# src/core/config.py
+CONFIG_VERSION = 1
+MIGRATIONS = {
+    # 0 → 1: 添加 batch_concurrency 字段
+    # 1 → 2: rename custom_output_dir → output_dir_custom（示例）
+    # ...
+}
+
+def load_config(path: Path) -> dict:
+    data = json.loads(path.read_text()) if path.exists() else {}
+    version = data.get("config_version", 0)
+    if version < CONFIG_VERSION:
+        for old in range(version, CONFIG_VERSION):
+            data = MIGRATIONS[old](data)        # 链式迁移
+        data["config_version"] = CONFIG_VERSION
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    elif version > CONFIG_VERSION:
+        # 新版应用读老配置文件 = 不应发生（用户降级）；备份 + 重置
+        backup_corrupt_config(path)
+        return DEFAULT_CONFIG
+    return data
+```
+
+**保护策略**（与 [01 §5.1 E_INTERNAL_003](01-requirements.md) 异常场景对应）：
+- 迁移前自动备份原文件为 `config.json.bak.{timestamp}`
+- 迁移失败 → 记录 `crash.log` + 重置为默认值 + 通知用户
+- 任何迁移都不删除用户原有数据，只**新增**字段和**重命名**字段
 
 ## 4. 关键设计决策
 
@@ -252,24 +323,78 @@ CREATE TABLE history (
 
 ## 5. 安全考虑
 
+### 5.1 基本安全项（v1.0 必须）
+
 - **输入验证**：限制文件大小上限 500MB，防止恶意大文件
-- **路径安全**：输出文件写入前验证路径合法性（处理 Windows MAX_PATH 260 字符限制）
-- **API 密钥**：LLM API Key 不记录日志，存储在 `%APPDATA%\Lei_MD\config.json`（用户目录权限）
+- **路径安全**：输出文件写入前验证路径合法性（处理 Windows MAX_PATH 260 字符限制）；拒绝 `../` 路径遍历
+- **API 密钥**：LLM API Key 不记录日志，存储在 `%APPDATA%\Lei_MD\config.json`（用户目录权限，仅当前用户可读）
 - **子进程隔离**：转换在 QThread 中执行，异常不影响主程序
 - **音频格式**：v1.0 **不支持** MP3/WAV/OGG/FLAC（[详见 01 F9a](01-requirements.md)，v1.1+ 离线实现）
 - **离线运行**：安装后**不联网**，更新通过用户手动下载新安装包
+
+### 5.2 临时文件清理（v1.0 必须）
+
+MarkItDown 转换过程可能产生临时文件（如 PDF→图片→OCR 中间产物），如不清理会占用用户磁盘并泄露内容。
+
+**策略**：
+- 所有临时文件统一写入 `%TEMP%\Lei_MD\{session_id}\`
+- 每次启动清理：删除 `>= 24 小时`未访问的临时目录
+- 每次退出清理：删除当前 session 的临时目录
+- 异常退出：下次启动按 24h 规则兜底清理
+- 转换成功后立即清理该文件对应的临时目录
+
+### 5.3 STRIDE 威胁模型（v1.0 三大关键威胁）
+
+> 完整 STRIDE 6 维度分析见 [v2.0+ 路线图](#)；v1.0 只对实际威胁最大的 3 项做评估与缓解。
+
+| STRIDE 维度 | 威胁场景 | 影响 | v1.0 缓解措施 | 残余风险 |
+|------------|----------|------|---------------|----------|
+| **S**poofing（伪装） | 攻击者替换 `Lei_MD.exe` 或劫持其依赖 DLL（Windows 路径劫持 / DLL 注入） | 恶意代码以 Lei_MD 身份执行 | v1.0 接受 SmartScreen 警告（**用户风险**，v1.1+ 评估 EV 代码签名证书）；安装包 SHA256 校验和发布在 GitHub Release | DLL 搜索顺序劫持 — v1.0 不防 |
+| **T**ampering（篡改） | 攻击者篡改 `config.json` 注入恶意路径/API endpoint | 数据泄露或命令执行 | 配置文件存用户目录 + 仅当前用户可写；启动时 schema 校验（详见 §3.4.1） | 多用户共享电脑场景下不防 |
+| **I**nformation Disclosure（信息泄露） | API Key 写到日志 / crash report / 转储文件 | 凭据泄露 | API Key 永远不写日志（自定义 log filter）；crash.log 自动 redact `api_key=` 字段；`%APPDATA%\Lei_MD\` 目录权限 `700` | 用户主动导出日志含 Key — 文档提示 |
+
+**未在 v1.0 缓解的威胁**（v1.1+ 路线图）：
+- **R**epudiation（抵赖）：转换操作审计日志 — v1.0 不实现
+- **D**enial of Service（拒绝服务）：恶意大文件 / 大量并发 — v1.0 有 500MB 限制 + 4 并发上限，**基本缓解**
+- **E**levation of Privilege（权限提升）：MarkItDown 库自身漏洞 — 依赖上游修复 + Dependabot 自动 PR
+
+### 5.4 DLL 注入防护（v1.0 最小化）
+
+Windows 特有风险：恶意程序可能通过搜索顺序劫持替换 `Qt6*.dll` / `python*.dll`。
+
+**v1.0 缓解**：
+- **PyInstaller `--onedir` 模式**（非 `--onefile`）：所有 DLL 在同目录，降低 `PATH` 劫持风险
+- NSIS 安装包将 DLL 安装到 `%PROGRAMFILES%\Lei_MD\`（非 system32）
+- 启动时 `os.add_dll_directory(app_dir)` 显式限定 DLL 搜索路径
+
+**v1.0 不实现**（v1.1+ 评估）：
+- 启用 WinVerifyTrust 签名校验（需要代码签名证书）
+- 反调试 / 反注入检测（PyArmor 等工具，体积 + 50MB）
 
 ## 6. 错误处理设计
 
 ### 6.1 错误分类（5 大类）
 
-| 错误码前缀 | 类别 | 触发场景 | 用户体验 |
-|------------|------|----------|----------|
-| `E_FILE_xxx` | 文件级 | 文件不存在/被锁/0字节/格式损坏/超 500MB | UI 红条提示「该文件跳过」+ 继续处理其他 |
-| `E_CONVERT_xxx` | 转换级 | MarkItDown 抛异常（密码保护 PDF、加密 Office） | 文件列表标 ❌ 失败，悬停看错误详情 |
-| `E_SYS_xxx` | 系统级 | 磁盘满、权限不足、路径太长（Windows MAX_PATH 260） | 弹模态对话框 + "打开输出目录" 按钮 |
-| `E_INTERNAL_xxx` | 内部级 | Python 异常、QThread crash | 写 `crash.log`，UI 友好提示「附日志发 issue」 |
-| `E_UPDATE_xxx` | 更新级 | GitHub API 失败、checksum 不匹配、下载中断 | 不阻塞使用，更新页面显示失败原因 |
+**权威错误码 ID 列表**（与 [01 §5.1](01-requirements.md) 异常场景表一一对应）：
+
+| 错误码 | 类别 | 触发场景 | 用户体验 |
+|--------|------|----------|----------|
+| `E_FILE_001` | 文件级 | 文件不存在/被锁/被拖入后删除 | UI 红条「该文件跳过」+ 悬停看详情 |
+| `E_FILE_002` | 文件级 | 0 字节空文件 | UI 红条「文件为空，跳过」 |
+| `E_FILE_003` | 文件级 | 超大文件 (>500MB) | 拒绝 + 提示「文件超出 500MB 限制」 |
+| `E_FILE_004` | 文件级 | 路径遍历 / 非法文件名 | 拒绝 + 提示「非法文件名」 |
+| `E_FILE_005` | 文件级 | 不支持格式 (`.xyz` 等) | 拒绝 + 提示「暂不支持此格式（v1.0 支持 20+ 格式，详见 01 F2）」 |
+| `E_FILE_006` | 文件级 | 拖入音频 (mp3/wav) | 明确提示「音频转录 v1.1+ 支持，详见 01 F9a」 |
+| `E_CONVERT_001` | 转换级 | 密码保护 PDF / 加密 Office | 文件列表标 ❌ + 提示「文件受密码保护，暂不支持」 |
+| `E_CONVERT_002` | 转换级 | 文件格式损坏 (docx 实际 zip 损坏等) | 文件列表标 ❌ + 提示「文件已损坏，无法解析」 |
+| `E_SYS_001` | 系统级 | 转换中用户强关 | 下次启动检查 `processing.lock` 清理未完成文件 |
+| `E_SYS_002` | 系统级 | 输出路径不可写 (磁盘满/权限不足) | 弹模态对话框 + 「打开输出目录」按钮 |
+| `E_SYS_003` | 系统级 | 路径超 Windows MAX_PATH 260 | 自动检测并尝试 `\\?\` 前缀；仍失败则报错 |
+| `E_INTERNAL_001` | 内部级 | 转换引擎 Python traceback | 捕获后不退出 + UI 红条 + 写 `crash.log` |
+| `E_INTERNAL_002` | 内部级 | SQLite 历史数据库损坏 | 下次启动检测 → 备份原文件 + 重建空库 |
+| `E_INTERNAL_003` | 内部级 | config.json 损坏 | 下次启动检测 → 备份原文件 + 重置默认值 |
+| `E_UPDATE_001` | 更新级 | 更新文件下载中断 / 校验失败 | 保留旧版本 + 提示重试 |
+| `E_UPDATE_002` | 更新级 | 应用内「检查更新」网络失败 | 静默忽略 + 状态栏提示「无法连接服务器」 |
 
 ### 6.2 错误信息规范
 

@@ -112,7 +112,12 @@ Lei_MD/
 
 ## 📄 许可
 
-MIT License — Copyright (c) 2026 leimengde。与上游 [Microsoft MarkItDown](https://github.com/microsoft/markitdown) 保持一致。
+**SPDX-License-Identifier: MIT** — Copyright (c) 2026 leimengde
+
+本项目（Lei_MD）是对 [Microsoft MarkItDown](https://github.com/microsoft/markitdown) 的**独立 MIT 授权** GUI 封装，**不属于**上游项目的一部分。
+- **Lei_MD 许可**：MIT（[LICENSE](LICENSE)）
+- **MarkItDown 上游许可**：MIT（[上游 LICENSE](https://github.com/microsoft/markitdown/blob/main/LICENSE)）
+- **依赖关系**：通过 `pip install markitdown[all]` 调用上游运行时，分发时自动随包携带上游版权声明。
 
 ## 🙏 致谢
 

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-01
+
+Worker 异步转换接入 MainWindow。**44/44 测试绿灯**（v0.1.0 的 36 + 新增 8）。
+
+### Added
+- **MainWindow 异步转换升级** (`src/ui/main_window.py`)
+  - 选文件 → 启 ConversionWorker（QThread）后台转换，主线程不阻塞
+  - status bar 永久添加 QProgressBar（0~100，转换中实时更新）
+  - status bar 永久添加「取消」按钮（按下 worker.cancel() 协作中断）
+  - 切换文件自动 cancel 上一个 worker，避免并发
+- **Converter 依赖注入** — `MainWindow(converter=...)` 测试可换 Stub
+- **新测试** `tests/test_main_window_v011.py`（8 个用例）
+  - progress_bar / cancel_button 初始隐藏
+  - converter 注入生效
+  - 选文件 → 异步 → preview 显示
+  - 进度条 0→100 实时更新
+  - 取消按钮中断 worker
+  - 错误时 preview 显示中文错误信息
+  - 切换文件 cancel 上一个
+
+### Changed
+- **API breaking**：`MainWindow.__init__()` 增加可选 kwarg `converter`。向后兼容（默认仍用真 MarkItDownConverter）
+- MainWindow 不再 import 同步 converter 调用路径（性能 + UX 改进）
+
 ## [0.1.0] - 2026-06-01
 
 首个可运行的 MVP。Sprint 1（Task 1.1-1.7）全部完成，36/36 测试绿灯。

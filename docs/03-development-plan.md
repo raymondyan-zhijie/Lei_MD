@@ -1,12 +1,15 @@
-# MarkItDown-GUI 开发计划
+# Lei_MD 开发计划
 
-> **For Hermes:** Use `subagent-driven-development` skill to implement this plan task-by-task.
->
-> **Goal:** 构建一个 Windows 原生 GUI 应用，封装 Microsoft MarkItDown 的文件转 Markdown 功能。
->
-> **Architecture:** PySide6 GUI + MarkItDown 引擎 + SQLite 历史 + QThread 异步转换。
->
-> **Tech Stack:** Python 3.10+, PySide6, MarkItDown[all], SQLite, PyInstaller
+> **品牌：** leimengde  
+> **For Hermes:** Use `subagent-driven-development` skill to implement this plan task-by-task.  
+>  
+> **Goal:** 构建一个 Windows 原生 GUI 应用，封装 Microsoft MarkItDown 的文件转 Markdown 功能。**大而全 + 离线运行 + 传统安装程序**。  
+>  
+> **Architecture:** PySide6 GUI + MarkItDown 引擎 + SQLite 历史 + QThread 异步转换。  
+>  
+> **Tech Stack:** Python 3.10 ~ 3.13, PySide6, MarkItDown[all], SQLite, PyInstaller + NSIS  
+>  
+> **总时间预估:** v0.1.0 MVP 4-6 周（保守，非 2 周）
 
 ---
 
@@ -28,16 +31,18 @@
 
 ```toml
 [project]
-name = "markitdown-gui"
+name = "lei-md"
 version = "0.1.0"
-description = "Windows GUI for Microsoft MarkItDown - convert files to Markdown with drag & drop"
-authors = [{name = "Raymond Yan"}]
+description = "Windows GUI for Microsoft MarkItDown - convert files to Markdown with drag & drop, offline and all-in-one"
+authors = [{name = "leimengde"}]
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 dependencies = [
-    "markitdown[all]>=0.1.0",
-    "PySide6>=6.7",
-    "darkdetect>=0.8",
+    "markitdown[all]>=0.1.0,<0.2.0",
+    "PySide6>=6.7,<7.0",
+    "darkdetect>=0.8,<0.9",
+    "markdown>=3.6,<4.0",
+    "Pygments>=2.18,<3.0",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -47,10 +52,11 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [project.scripts]
-markitdown-gui = "src.main:main"
+lei-md = "src.main:main"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -135,6 +141,13 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[dev]"
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
       - name: Run tests
         run: |
           pytest tests/ -v --cov=src --cov-report=term
@@ -279,7 +292,8 @@ SUPPORTED_EXTENSIONS = {
     ".xlsx", ".xls", ".html", ".htm", ".epub",
     ".csv", ".json", ".xml", ".txt", ".md",
     ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
-    ".wav", ".mp3", ".ogg", ".flac",
+    # 音频格式 v1.0 不支持（计划 v1.1+ 离线实现）
+    # ".wav", ".mp3", ".ogg", ".flac",
     ".zip", ".msg", ".ipynb",
 }
 
@@ -313,11 +327,17 @@ class DropArea(QLabel):
             event.ignore()
 
     def dropEvent(self, event):
+        """收集所有支持的文件：单文件 + 目录递归展开。"""
         paths = []
         for url in event.mimeData().urls():
-            path = Path(url.toLocalFile())
-            if path.suffix.lower() in SUPPORTED_EXTENSIONS or path.is_dir():
-                paths.append(path)
+            p = Path(url.toLocalFile())
+            if p.is_dir():
+                # 递归展开目录，flat 列表
+                for child in p.rglob("*"):
+                    if child.is_file() and child.suffix.lower() in SUPPORTED_EXTENSIONS:
+                        paths.append(child)
+            elif p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS:
+                paths.append(p)
         if paths:
             self.files_dropped.emit(paths)
 ```
@@ -424,6 +444,8 @@ class ConverterWorker(QThread):
     def __init__(self, files: list[Path]):
         super().__init__()
         self.files = files
+        # Converter 实例共享——避免每个文件重新初始化插件/缓存
+        self._converter = MarkItDownConverter()
 
     def run(self):
         results = []
@@ -432,8 +454,7 @@ class ConverterWorker(QThread):
             result = ConversionResult(path=path)
             try:
                 start = time.time()
-                conv = MarkItDownConverter()
-                result.markdown = conv.convert(path)
+                result.markdown = self._converter.convert(path)
                 result.duration_ms = (time.time() - start) * 1000
                 result.success = True
             except Exception as e:
@@ -584,7 +605,7 @@ from src.core.batch_worker import ConverterWorker
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("MarkItDown-GUI")
+        self.setWindowTitle("Lei_MD — 文件转 Markdown")
         self.resize(1000, 700)
         
         central = QWidget()
@@ -709,10 +730,20 @@ class MainWindow(QMainWindow):
 
 ```python
 import json
+import os
 from pathlib import Path
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-CONFIG_DIR = Path.home() / ".markitdown-gui"
+# Windows: %APPDATA%\Lei_MD\config.json
+# macOS/Linux (v2.0+): ~/.config/Lei_MD/config.json
+def _config_dir() -> Path:
+    if os.name == "nt":
+        base = Path(os.environ.get("APPDATA", Path.home()))
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return base / "Lei_MD"
+
+CONFIG_DIR = _config_dir()
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 @dataclass
@@ -735,15 +766,20 @@ class ConfigManager:
     
     def _load(self) -> AppConfig:
         if CONFIG_FILE.exists():
-            data = json.loads(CONFIG_FILE.read_text())
-            return AppConfig(**{k: v for k, v in data.items() 
-                               if k in AppConfig.__dataclass_fields__})
+            try:
+                data = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+                return AppConfig(**{k: v for k, v in data.items() 
+                                   if k in AppConfig.__dataclass_fields__})
+            except (json.JSONDecodeError, TypeError):
+                # 配置损坏：备份+重置
+                CONFIG_FILE.rename(CONFIG_FILE.with_suffix(".json.bak"))
         return AppConfig()
     
     def save(self):
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         CONFIG_FILE.write_text(
-            json.dumps(self._config.__dict__, indent=2, ensure_ascii=False)
+            json.dumps(self._config.__dict__, indent=2, ensure_ascii=False),
+            encoding="utf-8"
         )
     
     def get(self) -> AppConfig:
@@ -766,10 +802,18 @@ class ConfigManager:
 ```python
 import sqlite3
 import time
+import os
 from pathlib import Path
 from dataclasses import dataclass
 
-DB_PATH = Path.home() / ".markitdown-gui" / "history.db"
+def _data_dir() -> Path:
+    if os.name == "nt":
+        base = Path(os.environ.get("APPDATA", Path.home()))
+    else:
+        base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    return base / "Lei_MD"
+
+DB_PATH = _data_dir() / "history.db"
 
 @dataclass
 class HistoryEntry:
@@ -787,6 +831,12 @@ class HistoryManager:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         self._max = max_entries
         self._conn = sqlite3.connect(str(DB_PATH))
+        # 启动时检查数据库完整性
+        result = self._conn.execute("PRAGMA integrity_check").fetchone()
+        if result[0] != "ok":
+            # 损坏：备份+重建
+            DB_PATH.rename(DB_PATH.with_suffix(".db.bak"))
+            self._conn = sqlite3.connect(str(DB_PATH))
         self._conn.execute("""
             CREATE TABLE IF NOT EXISTS history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -879,14 +929,14 @@ from pathlib import Path
 
 PyInstaller.__main__.run([
     'src/main.py',
-    '--name=MarkItDown-GUI',
+    "--name=Lei_MD",
     '--windowed',                     # 无控制台窗口
     '--icon=src/resources/icons/app.ico',
     '--add-data=src/resources/locales:locales',
     '--hidden-import=markitdown',
     '--hidden-import=Pygments',
     '--clean',
-    '--onefile',                      # 单文件
+    '--onefile',                      # 单文件（大而全）
 ])
 ```
 
@@ -894,9 +944,9 @@ PyInstaller.__main__.run([
 
 ```nsis
 ; scripts/installer.nsi
-Name "MarkItDown-GUI"
-OutFile "MarkItDown-GUI-Setup-${VERSION}.exe"
-InstallDir "$PROGRAMFILES\MarkItDown-GUI"
+Name "Lei_MD"
+OutFile "Lei_MD-Setup-${VERSION}.exe"
+InstallDir "$PROGRAMFILES\Lei_MD"
 RequestExecutionLevel admin
 ```
 
@@ -912,15 +962,25 @@ RequestExecutionLevel admin
 
 ```python
 # tests/conftest.py
+import os
+import sys
+from pathlib import Path
+
 import pytest
+
+# 确保 src/ 可被 import
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from PySide6.QtWidgets import QApplication
+
 
 @pytest.fixture(scope="session")
 def qapp():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
+    """提供全局 QApplication 实例，供所有 UI 测试复用。"""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    app = QApplication.instance() or QApplication([])
     yield app
+    app.processEvents()
 ```
 
 ### Task 4.2: 测试清单
@@ -936,7 +996,9 @@ def qapp():
 
 ## Phase 5: 最终检查清单 v1.0.0
 
-- [ ] 拖拽 PDF/Word/Excel/PPT/HTML/图片/音频/ZIP 均可成功转换
+- [ ] 拖拽 PDF/Word/Excel/PPT/HTML/图片/ZIP 均可成功转换
+- [ ] 拖入目录时自动递归展开
+- [ ] 拖入音频（mp3/wav）给出明确不支持提示（v1.0 不支持）
 - [ ] 批量 10 个文件转换无崩溃
 - [ ] 预览窗口正确渲染 Markdown（表格、代码块、图片）
 - [ ] 复制到剪贴板正常
@@ -953,11 +1015,13 @@ def qapp():
 
 | 文件 | 状态 | 说明 |
 |------|------|------|
-| `docs/01-requirements.md` | ✅ 已创建 | 需求文档 |
-| `docs/02-architecture.md` | ✅ 已创建 | 架构设计 |
-| `docs/03-development-plan.md` | ✅ 本文件 | 开发计划 |
-| `docs/04-testing-plan.md` | 🔜 待创建 | 测试计划 |
-| `docs/05-release-plan.md` | 🔜 待创建 | 发布与维护 |
-| `pyproject.toml` | 🔜 | 项目配置 |
-| `src/` | 🔜 | 源代码 |
+|| `docs/01-requirements.md` | ✅ 已创建 | 需求文档 |
+|| `docs/02-architecture.md` | ✅ 已创建 | 架构设计 |
+|| `docs/03-development-plan.md` | ✅ 本文件 | 开发计划 |
+|| `docs/04-testing-plan.md` | ✅ 已创建 | 测试计划 |
+|| `docs/05-release-plan.md` | ✅ 已创建 | 发布与维护 |
+|| `docs/06-dependency-update-strategy.md` | ✅ 已创建 | 依赖更新策略（首次发布后） |
+|| `CODE_OF_CONDUCT.md` | ✅ 已创建 | 社区行为准则 |
+|| `pyproject.toml` | 🔜 | 项目配置 |
+|| `src/` | 🔜 | 源代码 |
 | `tests/` | 🔜 | 测试代码 |

@@ -1,5 +1,6 @@
-# MarkItDown-GUI 发布与维护计划
+# Lei_MD 发布与维护计划
 
+> **品牌：** leimengde  
 > **版本：** v0.1.0 | **日期：** 2026-06-01
 
 ---
@@ -40,7 +41,7 @@ v1.x.0  ← 持续迭代                             (每月)
 
 ### 2.2 发布步骤
 
-```bash
+```python
 # 1. 更新版本号
 python scripts/bump_version.py 1.0.0
 
@@ -54,8 +55,8 @@ git push origin main --tags
 
 # 4. GitHub Actions 自动：
 #    - 运行全部测试
-#    - PyInstaller 打包
-#    - NSIS 生成安装包
+#    - PyInstaller 打包 Lei_MD.exe
+#    - NSIS 生成 Lei_MD-Setup-x.x.x.exe
 #    - 创建 GitHub Release 并上传资产
 ```
 
@@ -96,70 +97,89 @@ jobs:
 
 ## 3. 交付物
 
-### 3.1 三种交付形态
+### 3.1 三种交付形态（**大而全离线**）
 
-| 形态 | 目标用户 | 大小 |
-|------|----------|------|
-| **便携版 .exe** | 进阶用户、U 盘携带 | ~80MB (单文件) |
-| **NSIS 安装包** | 普通用户、企业部署 | ~90MB |
-| **zip 压缩包** | 便携 + 可选依赖 | ~80MB |
+| 形态 | 目标用户 | 大小（预估） |
+|------|----------|------------|
+| **NSIS 标准安装包** | 普通用户、企业部署 | 400-500MB（包含全部 20+ 格式依赖） |
+| **便携版 zip** | 进阶用户、U 盘携带 | 同上，解压即用 |
+| **pip 包** | 开发者自用 | 仅源码 + 依赖声明 |
+
+> **v1.0 不提供按格式分拆安装**（MarkItDown 上游不分模块化，按需安装需要 fork 上游，列入 v2.0+ 路线图）
 
 ### 3.2 下载渠道
 
 | 渠道 | 说明 |
 |------|------|
-| **GitHub Releases** | 主渠道，自动发布 |
-| **官网** (未来) | markitdown-gui.leimengde.net |
-| **WinGet** (未来) | `winget install markitdown-gui` |
-| **Scoop** (未来) | `scoop install markitdown-gui` |
+| **GitHub Releases** | 主渠道，自动发布（`https://github.com/raymondyan-zhijie/Lei_MD/releases`） |
+| **应用内「检查更新」** | 启动时调 `https://api.github.com/repos/raymondyan-zhijie/Lei_MD/releases/latest` 提示用户 |
+| **官网** (未来) | `markitdown-gui.leimengde.net` |
+| **WinGet** (未来) | `winget install leimengde.Lei_MD` |
+| **Scoop** (未来) | `scoop install lei-md` |
 
 ## 4. 用户文档
 
 ### 4.1 README.md 结构
 
 ```markdown
-# MarkItDown-GUI
+# Lei_MD
 
-> 🪟 Windows 桌面版文件转 Markdown 工具 — 基于 Microsoft MarkItDown
+> 🪟 Windows 桌面版文件转 Markdown 工具 — 基于 Microsoft MarkItDown，**大而全 + 离线运行 + 传统安装**
 
 ## 快速开始
-下载 .exe → 拖入文件 → 获得 Markdown
+下载 Setup.exe → 安装 → 拖入文件 → 获得 Markdown
 
 ## 功能
-- 🖱 拖拽转换：支持 PDF/Word/Excel/PPT/HTML 等 20+ 格式
-- 👁 实时预览：Markdown 渲染视图
-- 📋 一键复制/导出
+- 🖱 拖拽转换：支持 PDF/Word/Excel/PPT/HTML/EPUB/图片/CSV/JSON/XML/ZIP 等
+- 📁 目录拖拽：自动递归展开所有支持文件
+- 👁 实时预览：Markdown 渲染视图（表格、代码块、图片）
+- 📋 一键复制到剪贴板 / 导出 .md 文件
 - 🎨 深色模式
-- 🌏 中文界面
+- 🌏 中英文界面
+- 🔒 完全离线运行，不联网不传数据
+
+## 不支持的格式（v1.0）
+- 音频（MP3/WAV/OGG/FLAC）— 计划 v1.1+ 离线实现
 
 ## 安装
-1. 下载 MarkItDown-GUI-Setup-x.x.x.exe
-2. 双击安装
+1. 下载 `Lei_MD-Setup-x.x.x.exe`
+2. 双击安装（NSIS 引导）
 3. 开始使用
 
 ## 开发
-见 docs/ 目录
+见 `docs/` 目录（6 份规划文档）
+
+## 反馈
+- Issues: https://github.com/raymondyan-zhijie/Lei_MD/issues
+- Email: 联系 leimengde
 ```
 
 ### 4.2 用户手册
 
 ```markdown
-# MarkItDown-GUI 用户手册
+# Lei_MD 用户手册
 
 ## 基本操作
-1. 打开 MarkItDown-GUI
-2. 拖拽文件到窗口（或点击选择文件）
+1. 打开 Lei_MD
+2. 拖拽文件到窗口（或点击选择文件 / 拖入整个文件夹）
 3. 点击「开始转换」
 4. 预览 Markdown 结果
 5. 点击「导出 .md」保存文件
 
 ## 批量转换
-拖入多个文件，点击「开始转换」即可批量处理。
+拖入多个文件或整个文件夹，点击「开始转换」即可批量处理。
+文件夹会自动递归展开所有支持格式的文件。
 转换过程显示进度条，每个文件完成后立即预览。
 
-## 设置 LLM 图片描述
-进入「设置」→ 填入 OpenAI API Key → 选择模型
+## 错误处理
+所有错误均以**错误码**显示（例：`E_FILE_001`），
+详细信息悬停可见，详细 traceback 在 `%APPDATA%\Lei_MD\logs\`。
+遇到问题可在 GitHub Issues 搜索错误码。
+
+## 设置 LLM 图片描述（v1.0.0+）
+进入「设置」→ 填入 OpenAI 兼容 API Key → 选择模型
 转换 PPT 和图片时会自动调用 LLM 生成描述文字。
+（API Key 存储在 `%APPDATA%\Lei_MD\config.json`，不联网传输）
 
 ## 快捷键
 | 快捷键 | 功能 |
@@ -168,6 +188,12 @@ jobs:
 | Ctrl+C | 复制 Markdown |
 | Ctrl+S | 导出 .md |
 | Ctrl+Q | 退出 |
+
+## 数据存储位置
+- 配置：`%APPDATA%\Lei_MD\config.json`
+- 历史：`%APPDATA%\Lei_MD\history.db`
+- 日志：`%APPDATA%\Lei_MD\logs\`
+- 备份：`%APPDATA%\Lei_MD\*.bak`（自动生成，损坏恢复用）
 ```
 
 ## 5. 维护计划
@@ -176,9 +202,12 @@ jobs:
 
 | 依赖 | 检查频率 | 策略 |
 |------|----------|------|
-| markitdown | 每周 | 自动 Dependabot PR |
-| PySide6 | 每月 | 手动评估兼容性 |
+| markitdown | 每周 | Dependabot PR（`>=0.1.0,<0.2.0` 上限内自动） |
+| PySide6 | 每月 | 手动评估（major 版本 v6→v7 延后 1 个 minor） |
 | Python | 每季度 | 新增版本 CI 矩阵 |
+| 底层库（PyMuPDF/python-docx 等） | 每周 | Dependabot `group: minor-and-patch` 自动 PR |
+
+> 详细策略与失败恢复见 `docs/06-dependency-update-strategy.md`
 
 ### 5.2 日常维护任务
 
@@ -208,8 +237,8 @@ jobs:
 # 贡献指南 (CONTRIBUTING.md)
 
 ## 开发环境
-git clone https://github.com/<user>/markitdown-gui.git
-cd markitdown-gui
+git clone https://github.com/raymondyan-zhijie/Lei_MD.git
+cd Lei_MD
 pip install -e ".[dev]"
 
 ## 代码风格
@@ -225,14 +254,19 @@ pip install -e ".[dev]"
 - refactor: 重构
 - test: 测试
 - chore: 构建/工具
+- deps: 上游依赖升级
 
 ## PR 流程
 1. Fork 仓库
-2. 创建功能分支
-3. 写测试 → 实现 → 确保通过
+2. 创建功能分支（feat/xxx 或 fix/xxx）
+3. 写测试 → 实现 → 确保本地通过
 4. 提交 PR，描述变更
-5. CI 自动运行测试
+5. CI 自动运行测试（lint + pytest + build）
 6. 维护者 Review 后合并
+
+## 上游更新特别说明
+当 `markitdown` 上游发布新版本时，请参考 `docs/06-dependency-update-strategy.md`，
+不要直接修改 `pyproject.toml` 的版本上限。
 ```
 
 ### 6.2 问题反馈模板
@@ -265,22 +299,31 @@ body:
 ```markdown
 # Changelog
 
-## [1.0.0] - 2026-07-15
+## [1.0.0] - 2026-XX-XX
 
 ### Added
-- 文件拖拽转换 (PDF/Word/Excel/PPT/HTML/EPUB/图片/音频/ZIP)
+- 文件拖拽转换 (PDF/Word/Excel/PPT/HTML/EPUB/图片/CSV/JSON/XML/ZIP)
+- 目录递归展开
 - Markdown 实时预览
 - 批量转换 + 进度条
 - 一键复制到剪贴板
 - 导出 .md 文件
 - 深色/浅色主题切换
-- 中英文界面
+- 中英文界面 + 错误信息国际化
+- 5 大类错误码体系（E_FILE / E_CONVERT / E_SYS / E_INTERNAL / E_UPDATE）
+- SQLite 历史记录 + 启动时完整性检查
+- 配置文件损坏自动备份恢复
 
 ### Fixed
 - 大文件 (>50MB) 转换时内存泄漏修复
+- 拖入目录时不再误传目录路径给 MarkItDown
+- ConverterWorker 复用 converter 实例（性能优化）
+
+### Not in v1.0 (planned v1.1+)
+- 音频转录 (MP3/WAV) — 离线 ffmpeg + whisper
+- YouTube URL 输入
 
 ## [0.1.0] - 2026-06-30
-
 ### Added
 - 项目初始化
 - 基本窗口骨架
@@ -295,7 +338,7 @@ body:
 ```
 MIT License
 
-Copyright (c) 2026 Raymond Yan
+Copyright (c) 2026 leimengde
 
 Permission is hereby granted, free of charge, to any person obtaining a copy...
 ```

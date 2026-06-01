@@ -1,5 +1,6 @@
-# MarkItDown-GUI 测试计划
+# Lei_MD 测试计划
 
+> **品牌：** leimengde  
 > **版本：** v0.1.0 | **日期：** 2026-06-01
 
 ---
@@ -23,6 +24,8 @@
 | Python | 3.10, 3.11, 3.12 |
 | CI | GitHub Actions `windows-latest` |
 | 本地 | 开发者 Windows 11 Pro Workstation |
+
+> 配套 `tests/conftest.py` 提供全局 `qapp` fixture（offscreen 模式），pytest-qt 自动复用。
 
 ## 3. 单元测试
 
@@ -264,15 +267,22 @@ def test_full_workflow(qapp, tmp_path, qtbot):
 | 应用启动 | 冷启动时间 | < 3s |
 | 内存占用 | 空闲状态 | < 100MB |
 
-## 7. 安全测试
+## 7. 安全与错误处理测试
 
-| 场景 | 期望行为 |
-|------|----------|
-| 空文件 (0 byte) | 正常处理或明确提示 |
-| 超大文件 (>500MB) | 拒绝并提示文件过大 |
-| 恶意文件名 (路径遍历) | 拒绝，不访问预期外路径 |
-| 无效的 LLM API Key | 不记录日志，返回明确错误 |
-| 并发 100 个文件拖入 | UI 不冻结，最多处理前 N 个 |
+| 场景 | 期望行为 | 错误码 |
+|------|----------|--------|
+| 空文件 (0 byte) | 跳过，给出友好提示 | `E_FILE_002` |
+| 超大文件 (>500MB) | 拒绝并提示文件过大 | `E_FILE_003` |
+| 恶意文件名 (路径遍历) | 拒绝，不访问预期外路径 | `E_FILE_004` |
+| 密码保护 PDF | 转换失败但 UI 友好提示 | `E_CONVERT_001` |
+| 损坏的 Office 文档 | 转换失败，保留 traceback 到 crash.log | `E_CONVERT_002` |
+| 拖入目录 | 递归展开所有支持文件 | (正常) |
+| 拖入不支持格式 | 跳过，标"❌ 不支持" | `E_FILE_005` |
+| 拖入音频 (mp3/wav) | v1.0 明确提示「v1.1+ 支持」 | `E_FILE_006` |
+| 无效的 LLM API Key | 不记录日志，返回明确错误 | `E_INTERNAL_001` |
+| 配置文件损坏 | 备份 .bak 后重置默认 | (启动恢复) |
+| SQLite 损坏 | 备份 .bak 后重建空表 | (启动恢复) |
+| 并发 100 个文件拖入 | UI 不冻结，最多处理前 N 个 | (节流) |
 
 ## 8. 测试夹具样本文件
 
@@ -288,9 +298,15 @@ tests/fixtures/
 ├── sample.csv           # CSV 数据
 ├── sample.json          # JSON 数据
 ├── sample.zip           # ZIP 压缩包（含上述部分文件）
+├── sample_dir/          # 目录样本（用于测试递归展开）
+│   ├── a.pdf
+│   └── subdir/
+│       └── b.docx
 ├── empty.txt            # 空文件
 ├── large.txt            # 大文本文件 (5MB)
-└── invalid.xyz          # 不支持格式
+├── invalid.xyz          # 不支持格式
+├── locked.pdf           # 被占用的 PDF (Windows 测试用)
+└── corrupted.docx       # 损坏的 Word 文档 (用于 E_CONVERT_xxx 测试)
 ```
 
 ## 9. CI 集成

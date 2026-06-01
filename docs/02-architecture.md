@@ -1,5 +1,6 @@
-# MarkItDown-GUI 架构设计文档
+# Lei_MD 架构设计文档
 
+> **品牌：** leimengde  
 > **版本：** v0.1.0 | **日期：** 2026-06-01
 
 ---
@@ -53,7 +54,7 @@ darkdetect>=0.8               # Windows 深色模式检测
 ## 2. 项目结构
 
 ```
-markitdown-gui/
+Lei_MD/
 ├── src/
 │   ├── __init__.py
 │   ├── main.py                 # 程序入口
@@ -132,12 +133,12 @@ markitdown-gui/
 │                                                     │
 │       ┌──────────────────────────────┐              │
 │       │    ConfigManager             │              │
-│       │   (QSettings / JSON 配置)     │              │
+│       │   (JSON: %APPDATA%\Lei_MD\  │              │
 │       └──────────────────────────────┘              │
 │                                                     │
 │       ┌──────────────────────────────┐              │
 │       │    HistoryManager            │              │
-│       │   (SQLite 本地历史记录)        │              │
+│       │   (SQLite: %APPDATA%\Lei_MD\ │              │
 │       └──────────────────────────────┘              │
 └─────────────────────────────────────────────────────┘
 ```
@@ -228,8 +229,8 @@ CREATE TABLE history (
 | 决策 | 选择 | 理由 |
 |------|------|------|
 | GUI 框架 | PySide6 | 原生控件、拖拽支持、成熟生态 |
-| 配置存储 | JSON 文件 (~/.markitdown-gui/) | 简单可读、易于备份 |
-| 历史存储 | SQLite | 轻量、支持查询、无需服务 |
+| 配置存储 | **JSON** (`%APPDATA%\Lei_MD\config.json`) | 简单可读、易于备份、跨平台友好 |
+| 历史存储 | **SQLite** (`%APPDATA%\Lei_MD\history.db`) | 轻量、支持查询、无需服务 |
 | 预览渲染 | QTextBrowser + 自定义 Markdown→HTML | 避免引入 WebEngine (体积大) |
 | 打包方案 | PyInstaller + NSIS | 生成独立 .exe + 标准安装包 |
 | 版本策略 | SemVer (MAJOR.MINOR.PATCH) | 清晰传达变更影响 |
@@ -237,6 +238,48 @@ CREATE TABLE history (
 ## 5. 安全考虑
 
 - **输入验证**：限制文件大小上限 500MB，防止恶意大文件
-- **路径安全**：输出文件写入前验证路径合法性
-- **API 密钥**：LLM API Key 不记录日志，存储在本地 JSON（用户目录）
-- **子进程隔离**：转换在子线程中执行，异常不影响主程序
+- **路径安全**：输出文件写入前验证路径合法性（处理 Windows MAX_PATH 260 字符限制）
+- **API 密钥**：LLM API Key 不记录日志，存储在 `%APPDATA%\Lei_MD\config.json`（用户目录权限）
+- **子进程隔离**：转换在 QThread 中执行，异常不影响主程序
+- **音频格式**：v1.0 **不支持** MP3/WAV/OGG/FLAC，UI 拖入时给出明确提示（计划 v1.1+ 离线实现）
+- **离线运行**：安装后**不联网**，更新通过用户手动下载新安装包
+
+## 6. 错误处理设计
+
+### 6.1 错误分类（5 大类）
+
+| 错误码前缀 | 类别 | 触发场景 | 用户体验 |
+|------------|------|----------|----------|
+| `E_FILE_xxx` | 文件级 | 文件不存在/被锁/0字节/格式损坏/超 500MB | UI 红条提示「该文件跳过」+ 继续处理其他 |
+| `E_CONVERT_xxx` | 转换级 | MarkItDown 抛异常（密码保护 PDF、加密 Office） | 文件列表标 ❌ 失败，悬停看错误详情 |
+| `E_SYS_xxx` | 系统级 | 磁盘满、权限不足、路径太长（Windows MAX_PATH 260） | 弹模态对话框 + "打开输出目录" 按钮 |
+| `E_INTERNAL_xxx` | 内部级 | Python 异常、QThread crash | 写 `crash.log`，UI 友好提示「附日志发 issue」 |
+| `E_UPDATE_xxx` | 更新级 | GitHub API 失败、checksum 不匹配、下载中断 | 不阻塞使用，更新页面显示失败原因 |
+
+### 6.2 错误信息规范
+
+**规则**：
+- ❌ 永远不向用户显示 Python traceback
+- ✅ 永远提供下一步可执行动作（「重试」/「跳过」/「打开日志」/「复制错误码」）
+- 错误码示例：`E_FILE_001`「无法读取 test.pdf：文件被其他程序占用，请关闭后重试」
+
+### 6.3 错误信息国际化
+
+错误信息存放在 `src/resources/locales/errors.json`：
+
+```json
+{
+  "E_FILE_001": {
+    "zh_CN": "无法读取 {filename}：文件被其他程序占用",
+    "en_US": "Cannot read {filename}: file is locked by another process"
+  }
+}
+```
+
+### 6.4 崩溃恢复
+
+| 场景 | 策略 |
+|------|------|
+| 转换中途用户强关 | 下次启动检查 `%APPDATA%\Lei_MD\processing.lock`，清理未完成文件 |
+| SQLite 历史损坏 | 启动时 `PRAGMA integrity_check`，坏则备份+重建 |
+| 配置文件损坏 | 备份为 `config.json.bak`，重置为默认 |

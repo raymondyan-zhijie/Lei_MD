@@ -1,4 +1,4 @@
-"""Theme detection and application for Lei_MD — Task 2.5.
+"""Theme detection and application for Lei_MD — .
 
 Detects system dark/light theme via darkdetect and applies a QPalette to
 QApplication. Falls back to light theme on systems where darkdetect is
@@ -40,7 +40,6 @@ LIGHT_QSS = """
 QPushButton { padding: 4px; }
 """
 
-
 def is_system_dark() -> bool:
     """Return True if the OS reports a dark theme; False otherwise.
 
@@ -54,7 +53,6 @@ def is_system_dark() -> bool:
         log.warning("is_system_dark: darkdetect.theme() failed; treating as light", exc_info=True)
         return False
     return str(result).lower() == "dark"
-
 
 def _build_dark_palette() -> QPalette:
     pal = QPalette()
@@ -75,7 +73,6 @@ def _build_dark_palette() -> QPalette:
     pal.setColor(QPalette.Disabled, QPalette.ButtonText, QColor(127, 127, 127))
     return pal
 
-
 def apply_theme(mode: str, app: Optional[QApplication] = None) -> None:
     """Apply theme to QApplication.
 
@@ -93,7 +90,6 @@ def apply_theme(mode: str, app: Optional[QApplication] = None) -> None:
         target.setPalette(target.style().standardPalette())
         target.setStyleSheet(LIGHT_QSS)
     log.info("Applied theme: %s", mode)
-
 
 class ThemeManager:
     """Reactive theme manager that listens to system theme changes.

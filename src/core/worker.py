@@ -1,6 +1,4 @@
-"""异步转换 Worker（Task 1.4）。
-
-按 03 §Task 1.4：
+"""异步转换 Worker（）。
 - QThread 子类，后台调 Converter.convert()，避免阻塞主线程
 - signals: started, progress(int 0~100), finished(str markdown),
   error(ConversionError), job_done(...)
@@ -12,7 +10,7 @@
 - 进度在 60% / 90% / 100% 报告（markitdown 不暴露原生进度条，模拟）
 - 不在 Worker 里捕获 traceback（日志交给 caller，UI 显示错误码即可）
 
-Terminal signal 语义（v0.2.2 audit M3.2）：
+Terminal signal 语义：
 - `job_done` 是**唯一**的 terminal signal，每次 run() 都发（成功/异常/取消）
 - `finished_with_md`：仅成功时发（cancel 路径不发）
 - `error`：仅真实转换异常时发（cancel 不发，走 job_done(success=False)）
@@ -27,7 +25,6 @@ from typing import Any
 
 from PySide6.QtCore import QThread, Signal
 
-
 class ConversionWorker(QThread):
     """单文件转换后台线程。
 
@@ -41,7 +38,7 @@ class ConversionWorker(QThread):
     progress = Signal(int)              # 0~100
     finished_with_md = Signal(str)      # 成功：返回 markdown 文本
     error = Signal(object)              # 失败：返回 ConversionError
-    # v0.2.0 集成：转换完成时携带元信息（路径/格式/长度/耗时/成功/错误）
+    # ：转换完成时携带元信息（路径/格式/长度/耗时/成功/错误）
     # HistoryManager 通过这个 signal 异步写 SQLite
     job_done = Signal(str, str, int, int, bool, str)
     # args: source_path, source_format, markdown_length, duration_ms, success, error_msg
@@ -90,7 +87,7 @@ class ConversionWorker(QThread):
 
             self.progress.emit(90)
             self.progress.emit(100)
-            # v0.2.0 hotfix（H4）：emit 成品前再检查一次取消，避免 UI 显示"已取消"但 preview 是满的
+            # ：emit 成品前再检查一次取消，避免 UI 显示"已取消"但 preview 是满的
             if self._cancel_event.is_set():
                 error_msg = "E_SYS_001"  # 用户取消
                 return

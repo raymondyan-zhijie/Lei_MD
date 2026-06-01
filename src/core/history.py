@@ -1,12 +1,8 @@
-"""历史记录管理（Task 1.9）。
-
-按 03 §Task 1.9 + 02 §3.3.1：
+"""历史记录管理（）。+ 02 §3.3.1：
 - SQLite 持久化转换历史
 - 并发模型：WAL + Signal 串行化（读写不互斥，写者唯一在主线程）
 - 损坏自动备份 + 重建（02 §6.4 E_INTERNAL_002）
-- 容量 trim（默认 50 条）
-
-SSOT：01 §5、02 §3.3.1、02 §6.4、04 §2 测试矩阵
+- 容量 trim（默认 50 条）、02 §3.3.1、02 §6.4、04 §2 测试矩阵
 """
 from __future__ import annotations
 
@@ -20,7 +16,6 @@ from typing import Any
 
 from PySide6.QtCore import QCoreApplication, QObject, QThread, Signal, Slot
 
-
 def data_dir() -> Path:
     """跨平台数据目录：Windows %APPDATA%，Linux/macOS $XDG_DATA_HOME。
 
@@ -33,15 +28,12 @@ def data_dir() -> Path:
         base = Path(xdg) if xdg else Path.home() / ".local" / "share"
     return base / "Lei_MD"
 
-
 def history_db_path() -> Path:
     """history.db 路径。"""
     return data_dir() / "history.db"
 
-
 # 向后兼容
 DB_PATH: Path = history_db_path()
-
 
 # 表 schema SSOT
 _SCHEMA = """
@@ -59,10 +51,9 @@ CREATE TABLE IF NOT EXISTS history (
 
 _INDEX = "CREATE INDEX IF NOT EXISTS idx_created_at ON history(created_at DESC)"
 
-
 @dataclass
 class HistoryEntry:
-    """一条历史记录（SSOT：01 §5.1 history 表 schema）。"""
+    """一条历史记录（ history 表 schema）。"""
 
     id: int
     source_path: str
@@ -72,7 +63,6 @@ class HistoryEntry:
     success: bool
     error_msg: str
     created_at: str
-
 
 class HistoryManager(QObject):
     """SQLite 历史记录管理器。
@@ -94,7 +84,7 @@ class HistoryManager(QObject):
 
     def __init__(self, max_entries: int = 50, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        # v0.2.2 P2 hotfix (M3.2): _conn 必须先初始化为 None，
+        # hotfix: _conn 必须先初始化为 None，
         # 这样 _open_and_init_db() 在 try/except 路径中途失败时，
         # 公共方法 (_on_add / list / _trim / close) 的 None 守卫可命中，
         # 不会 AttributeError 崩溃整个 UI。
@@ -113,7 +103,7 @@ class HistoryManager(QObject):
             self.add_requested.connect(self._on_add)
 
     def _assert_main_thread(self) -> None:
-        """v0.2.2 hotfix（H6）：强制 contract —— 公共方法只在主线程调。
+        """：强制 contract —— 公共方法只在主线程调。
 
         check_same_thread=False 仅靠注释保证，运行时一旦从 worker 线程误调
         会导致 sqlite3 锁死/段错误。QCoreApplication 未启动时（CLI/测试初始化）
@@ -145,12 +135,12 @@ class HistoryManager(QObject):
             if result is None or (result and result[0] != "ok"):
                 # 逻辑损坏：备份 + 重建
                 self._conn.close()
-                self._conn = None  # v0.2.2 P2 (M3.2): 显式重置让 _backup_and_recreate 接管
+                self._conn = None  # : 显式重置让 _backup_and_recreate 接管
                 self._backup_and_recreate()
                 return
         except sqlite3.DatabaseError:
             # 物理损坏（PRAGMA 都进不去）：备份 + 重建
-            # v0.2.2 P2 hotfix (M3.1): sqlite3.connect() 成功但 PRAGMA 失败时，
+            # hotfix: sqlite3.connect() 成功但 PRAGMA 失败时，
             # _conn 已创建但没被 close，会泄漏到 GC。先关再重建。
             if hasattr(self, "_conn") and self._conn is not None:
                 try:
@@ -214,7 +204,7 @@ class HistoryManager(QObject):
     def _on_add(self, payload: dict[str, Any]) -> None:
         """实际写入槽。永远在主线程执行。"""
         self._assert_main_thread()
-        # v0.2.2 P2 hotfix (M3.2): _conn 初始化失败时静默跳过，
+        # hotfix: _conn 初始化失败时静默跳过，
         # 避免 UI 在用户首次交互时 AttributeError 崩溃。
         if self._conn is None:
             return
@@ -237,7 +227,7 @@ class HistoryManager(QObject):
     def list(self, limit: int = 20) -> list[HistoryEntry]:
         """读取。WAL 模式下读不阻塞写，只在主线程调用所以无需额外保护。"""
         self._assert_main_thread()
-        # v0.2.2 P2 hotfix (M3.2): _conn 未初始化时返回空列表，
+        # hotfix: _conn 未初始化时返回空列表，
         # 让 UI 显示空状态而不是抛 AttributeError。
         if self._conn is None:
             return []
@@ -252,7 +242,7 @@ class HistoryManager(QObject):
     def _trim(self) -> None:
         """保留最新 max_entries 条，删除更旧的。"""
         self._assert_main_thread()
-        # v0.2.2 P2 hotfix (M3.2): _conn 未初始化时跳过 trim。
+        # hotfix: _conn 未初始化时跳过 trim。
         if self._conn is None:
             return
         self._conn.execute(
@@ -266,7 +256,7 @@ class HistoryManager(QObject):
     def close(self) -> None:
         """应用退出时调用。WAL checkpoint + 关闭连接。"""
         self._assert_main_thread()
-        # v0.2.2 P2 hotfix (M3.2): _conn 未初始化时不需要 close。
+        # hotfix: _conn 未初始化时不需要 close。
         if self._conn is None:
             return
         try:

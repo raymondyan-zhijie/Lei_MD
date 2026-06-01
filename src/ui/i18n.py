@@ -1,4 +1,4 @@
-"""i18n for Lei_MD — Task 2.6.
+"""i18n for Lei_MD — .
 
 A tiny in-house translator. Loads a JSON dict of key -> translated string
 for a given locale. Module-level default translator used by ``tr()``.
@@ -15,16 +15,15 @@ log = logging.getLogger(__name__)
 # Default locale when none is set
 DEFAULT_LOCALE = "en"
 
-# v0.2.5 P3 audit (L1) 白名单：允许通过 set_locale() 显式切换的 locale。
+# P3 ) 白名单：允许通过 set_locale() 显式切换的 locale。
 # 不在白名单里的输入一律 fallback 到 DEFAULT_LOCALE，避免路径拼接（f"{locale}.json"）
 # 时把攻击者控制的字符串拼到 _LOCALES_DIR 里。
-# v0.2.7 P0：加 "en" 让英文用户（DEFAULT_LOCALE）启动时不打 warning。
-# "en" 表示 keys 不翻译、UI 字符串保持源代码硬编码（tr() 在 v0.2.7 仍未接 UI）。
+# ：加 "en" 让英文用户（DEFAULT_LOCALE）启动时不打 warning。
+# "en" 表示 keys 不翻译、UI 字符串保持源代码硬编码（tr() 在仍未接 UI）。
 VALID_LOCALES: frozenset[str] = frozenset({"system", "en", "zh_CN", "en_US"})
 
 # Built-in resource directory
 _LOCALES_DIR = Path(__file__).resolve().parent.parent / "resources" / "locales"
-
 
 class Translator:
     """Holds translations for one locale and looks up keys."""
@@ -51,7 +50,6 @@ class Translator:
     def available_keys(self) -> list[str]:
         return list(self._dict.keys())
 
-
 # Module-level default translator
 _default: Translator = Translator(DEFAULT_LOCALE)
 
@@ -63,11 +61,8 @@ if _default_zh_path.is_file():
     except Exception:  # noqa: BLE001
         log.warning("Failed to load bundled zh_CN translations", exc_info=True)
 
-
 def set_locale(locale: str, translations: Optional[dict[str, str]] = None) -> Translator:
-    """Set the default locale and optionally load translations.
-
-    v0.2.5 P3 audit (L1): locale 不在 ``VALID_LOCALES`` 白名单时，fallback 到
+    """Set the default locale and optionally load translations. P3 audit: locale 不在 ``VALID_LOCALES`` 白名单时，fallback 到
     ``DEFAULT_LOCALE``（不再用攻击者控制的字符串拼 ``_LOCALES_DIR / f"{locale}.json"``）。
     """
     global _default
@@ -90,7 +85,6 @@ def set_locale(locale: str, translations: Optional[dict[str, str]] = None) -> Tr
             except Exception:  # noqa: BLE001
                 log.warning("Failed to load %s translations", locale, exc_info=True)
     return _default
-
 
 def tr(key: str) -> str:
     """Translate a key using the default locale's translator."""

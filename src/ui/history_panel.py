@@ -1,6 +1,4 @@
-"""历史记录面板（Task 2.3）。
-
-按 03 §Task 2.3 + HistoryManager API：
+"""历史记录面板（）。+ HistoryManager API：
 - QTableView 展示历史（不可编辑）
 - 构造时从 HistoryManager 拉数据
 - refresh() 重新拉
@@ -28,7 +26,6 @@ from PySide6.QtWidgets import (
 )
 
 _log = logging.getLogger(__name__)
-
 
 class HistoryPanel(QWidget):
     """历史记录面板。"""
@@ -98,13 +95,13 @@ class HistoryPanel(QWidget):
     def refresh(self) -> None:
         """从 HistoryManager 重新拉数据。
 
-        v0.2.7 P1 审计（v0.2.6 复审 #4）：DB 锁 / 损坏下 ``self._hm.list()`` 会
+        审计（）：DB 锁 / 损坏下 ``self._hm.list()`` 会
         抛 ``sqlite3.OperationalError``（如 "database is locked" / "file is not
         a database"），冒泡到 Qt event loop 会让整个 UI 崩。包 ``try/except
         sqlite3.Error`` —— 记 ``_log.warning`` + 把 ``_all_entries`` 置空，
         用户看到的只是"历史暂时无法加载"而不是整个面板 / 主窗口消失。
         """
-        # v0.2.7 P1：sqlite3 import 放在 try 块内，避免污染顶层命名空间
+        # ：sqlite3 import 放在 try 块内，避免污染顶层命名空间
         # （文件已 import logging / Path，sqlite3 是新依赖；放 try 内只
         # 实际用到的错误类路径走 import，正常路径零开销）
         try:

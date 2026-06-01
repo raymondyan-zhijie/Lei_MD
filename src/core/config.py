@@ -1,12 +1,8 @@
-"""配置文件管理（Task 1.8）。
-
-按 03 §Task 1.8 + 02 §6.4：
+"""配置文件管理（）。+ 02 §6.4：
 - 路径：Windows %APPDATA%\\Lei_MD\\config.json，Linux/macOS ~/.config/Lei_MD/config.json
 - 持久化用户设置（output_dir / language / theme / LLM 等）
 - 损坏文件自动备份 + 复位（E_INTERNAL_003）
-- 未知字段静默忽略（forward-compat）
-
-SSOT：01 §5.x、02 §3.3、04 §2 配置文件
+- 未知字段静默忽略（forward-compat）.x、02 §3.3、04 §2 配置文件
 """
 from __future__ import annotations
 
@@ -18,9 +14,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any
 
-
 _logger = logging.getLogger(__name__)
-
 
 def config_dir() -> Path:
     """跨平台配置目录：Windows %APPDATA%，Linux/macOS $XDG_CONFIG_HOME。
@@ -34,27 +28,24 @@ def config_dir() -> Path:
         base = Path(xdg) if xdg else Path.home() / ".config"
     return base / "Lei_MD"
 
-
 def config_file() -> Path:
     """配置文件路径。每次调用重新求 config_dir()。"""
     return config_dir() / "config.json"
 
-
-# 向后兼容（SSOT：早期文档用了大写）
+# 向后兼容
 CONFIG_DIR: Path = config_dir()
 CONFIG_FILE: Path = config_file()
 
-
 @dataclass
 class AppConfig:
-    """Lei_MD 全局配置（SSOT：01 §5.x + 02 §3.3）。"""
+    """Lei_MD 全局配置（.x + 02 §3.3）。"""
 
     # 输出行为
     output_dir: str = "same"            # "same" | "custom"
     custom_output_dir: str = ""
 
     # 转换行为
-    auto_convert: bool = True           # 拖入即转（v0.1.x 默认 True）
+    auto_convert: bool = True           # 拖入即转（ .x 默认 True）
     max_history: int = 50               # 历史保留条数
 
     # 界面
@@ -62,14 +53,14 @@ class AppConfig:
     theme: str = "system"               # "system" | "light" | "dark"
 
     # 性能
-    batch_concurrency: int = 4          # Sprint 3 Task 2.2 批量并行
+    batch_concurrency: int = 4          # 批量并行
 
-    # LLM 图片描述（v1.0 P2，可选）
+    # LLM 图片描述（ ，可选）
     llm_api_base: str = ""
     llm_api_key: str = ""
     llm_model: str = "gpt-4o"
 
-    # ---- v0.2.3 P2 audit (M6.3) 字段类型/取值校验 ----
+    # ---- audit 字段类型/取值校验 ----
     # 故意只校验已知"会被攻击者/老版本写坏"的字段；output_dir 这种
     # 业务枚举但 forward-compat 友好（值为 "same" / "custom" / 未来
     # 其它合法值）保持宽松，避免阻塞 schema 演进。
@@ -79,7 +70,7 @@ class AppConfig:
     def __post_init__(self) -> None:
         """字段类型/取值校验。失败 → TypeError，触发 _load 的备份复位路径。
 
-        设计要点（v0.2.3 audit M6.3）：
+        设计要点：
         - bool 必须是 bool，不能是 int（避免 0/1 兼容陷阱——dataclass 默认不拒 int）
         - 数值字段给上下界，防止 max_history="fifty" / batch_concurrency=99999 这类
           半坏数据被静默接受
@@ -140,7 +131,6 @@ class AppConfig:
                 f"llm_model must be str, got {type(self.llm_model).__name__}"
             )
 
-
 class ConfigManager:
     """配置读写管理器。
 
@@ -161,9 +151,9 @@ class ConfigManager:
         if not cfg_file.exists():
             return AppConfig()
         try:
-            # v0.2.1 hotfix（H3）：用 utf-8-sig 自动剥离 BOM（Windows 记事本默认存 BOM）
+            # ：用 utf-8-sig 自动剥离 BOM（Windows 记事本默认存 BOM）
             data: dict[str, Any] = json.loads(cfg_file.read_text(encoding="utf-8-sig"))
-            # v0.2.3 P2 audit (M6.2)：json.loads 可能返回合法但非 dict 的值
+            # audit：json.loads 可能返回合法但非 dict 的值
             # （list / str / int / bool / null）。后续 data.items() 会抛
             # AttributeError → 杀启动。显式拒绝 + 抛 ValueError，被同 try
             # 块 except 接住走复位路径。
@@ -184,7 +174,7 @@ class ConfigManager:
         try:
             return AppConfig(**known)
         except TypeError as e:
-            # v0.2.3 P2 audit (M6.3)：AppConfig.__post_init__ 抛 TypeError
+            # audit：AppConfig.__post_init__ 抛 TypeError
             # 表示字段类型/取值错（schema 不匹配 / 半坏数据）→ 备份复位。
             # 之前 except 只接住"未知 kwargs"导致的 TypeError；现在
             # __post_init__ 的类型错也走同一条复位路径，行为统一。
@@ -201,7 +191,7 @@ class ConfigManager:
     def _backup_and_reset(self) -> None:
         """把损坏的 config.json 备份为 .json.bak，然后写一份默认配置。
 
-        v0.2.3 P2 audit (M6.4) 修复：原实现用 cfg_file.rename()，两个隐患：
+        audit 修复：原实现用 cfg_file.rename()，两个隐患：
         1) Windows rename 不允许覆盖已存在的 .json.bak（POSIX 允许），
            OSError → 直接 unlink 原文件 → 损坏内容没保留。
         2) 跨卷 rename 抛 OSError（exdev），同 1 后果。
@@ -220,7 +210,7 @@ class ConfigManager:
                 shutil.move(str(cfg_file), str(bak_file))
             except OSError:
                 # 3) 终极兜底：删原文件（至少不阻塞启动；坏内容可能在
-                #    下次 save 时被默认覆盖；用户无 .bak 可恢复）
+                # 下次 save 时被默认覆盖；用户无 .bak 可恢复）
                 try:
                     cfg_file.unlink()
                 except OSError:
@@ -231,7 +221,7 @@ class ConfigManager:
                 json.dumps(asdict(AppConfig()), indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
-            # v0.2.2 hotfix（H1）：备份复位后同样收紧权限
+            # ：备份复位后同样收紧权限
             self._restrict_permissions(cfg_file)
         except OSError:
             pass  # 只读盘？让上层 get() 返回内存默认即可
@@ -244,7 +234,7 @@ class ConfigManager:
             json.dumps(asdict(self._config), indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-        # v0.2.2 hotfix（H1）：写完收紧权限为仅当前用户可读写，
+        # ：写完收紧权限为仅当前用户可读写，
         # 防止 LLM API key 被同机其他用户/备份工具读取。
         # Windows 上 os.chmod 是只读位，0o600 会被映射为 ACL 拒绝；POSIX 上是真正的 0o600。
         self._restrict_permissions(cfg)

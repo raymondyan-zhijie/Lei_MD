@@ -6,14 +6,13 @@
 设计要点：
 - 不在 import 时创建 QApplication（Qt 禁止多次创建）
 - 提供 `configure_application(app)` 静态方法，可重复调用
-- 版本号从 src.__version__ 读（SSOT：版本号只在 src/__init__.py 写一次）
+- 版本号从 src.__version__ 读（ src/__init__.py 写一次）
 """
 from __future__ import annotations
 
 from PySide6.QtWidgets import QApplication
 
 from src import __version__ as LEI_MD_VERSION
-
 
 class LeiMDApp:
     """Lei_MD 应用配置工具。"""

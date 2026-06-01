@@ -1,9 +1,9 @@
-"""拖拽区域组件（Task 1.2）。
+"""拖拽区域组件（）。
 
 职责：
 - 提供"拖入文件到这里"的视觉提示
 - 接受系统文件拖拽
-- 过滤支持的扩展名（v1.0 不支持音频，详见 01 F9a）
+- 过滤支持的扩展名（ 不支持音频，详见 01 F9a）
 - 目录拖入时递归展开所有支持文件
 - emit `files_dropped(list[str])` Signal 通知 MainWindow
 
@@ -24,9 +24,8 @@ from PySide6.QtWidgets import QLabel
 
 log = logging.getLogger(__name__)
 
-
-# v1.0 支持的扩展名（与 01 §3.1 F2 + 02 §1.1 + 03 §Task 1.3 SUPPORTED 一致）
-# v1.0 不支持音频：.wav / .mp3 / .ogg / .flac（详见 01 F9a，v1.1+ 离线实现）
+# 支持的扩展名（与 F2 + + 03 § SUPPORTED 一致）
+# 不支持音频：.wav / .mp3 / .ogg / .flac（详见 01 F9a， + 离线实现）
 SUPPORTED_EXTENSIONS: set[str] = {
     # 文档
     ".pdf", ".docx", ".pptx", ".xlsx", ".xls", ".ppt", ".doc",
@@ -43,11 +42,10 @@ SUPPORTED_EXTENSIONS: set[str] = {
     ".txt", ".md", ".rst", ".log",
 }
 
-# v0.2.5 P3 audit (L2) 目录递归限深 + 限文件数，防止用户拖入「超大共享盘 / 深层
+# P3 ) 目录递归限深 + 限文件数，防止用户拖入「超大共享盘 / 深层
 # 嵌套目录」把 GUI 卡死。超限后截断 + log.warning。
 MAX_RECURSE_DEPTH = 10
 MAX_RECURSE_FILES = 2000
-
 
 class DropArea(QLabel):
     """拖拽区域。"""
@@ -58,7 +56,7 @@ class DropArea(QLabel):
     DEFAULT_PLACEHOLDER = (
         "拖拽文件到此处开始转换\n\n"
         "支持 PDF · Word · Excel · PPT · HTML · EPUB · 图片 · ZIP 等\n"
-        "（音频 MP3/WAV 暂不支持 — 详见 v1.1+ 路线图）"
+        "（音频 MP3/WAV 暂不支持 — 详见 + 路线图）"
     )
 
     def __init__(self, parent=None):
@@ -110,7 +108,7 @@ class DropArea(QLabel):
                 continue
             p = Path(local)
             if p.is_dir():
-                # v0.2.5 P3 audit (L2) 用 os.walk 手动限深 + 限文件数，
+                # P3 ) 用 os.walk 手动限深 + 限文件数，
                 # 防止用户拖入「超大共享盘 / 深层嵌套目录」卡死 GUI。
                 truncated = self._collect_files_from_dir(
                     p, paths, MAX_RECURSE_DEPTH, MAX_RECURSE_FILES,
@@ -139,9 +137,7 @@ class DropArea(QLabel):
         max_depth: int,
         max_files: int,
     ) -> bool:
-        """递归收集 ``root`` 下所有支持的扩展名。
-
-        v0.2.5 P3 audit (L2)：
+        """递归收集 ``root`` 下所有支持的扩展名。 P3 audit：
 
         - ``max_depth``：从 ``root`` 算起的最大**子目录**层数。
           ``max_depth=0`` 表示只看 ``root`` 直接子文件（不递归）；

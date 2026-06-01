@@ -1,8 +1,6 @@
-"""PreviewPanel Markdown 预览（Task 1.5）。
-
-按 03 §Task 1.5：
+"""PreviewPanel Markdown 预览（）。
 - 用 QTextBrowser（零依赖、轻量、纯文本 OK）
-- v1.0 不引入 QWebEngine（400MB+ 体积增量大）
+- 不引入 QWebEngine（400MB+ 体积增量大）
 - API: set_markdown(str) / clear() / is_empty() / toPlainText() / toHtml()
 - set_markdown 用 setMarkdown() (PySide6 6.4+)
 - 非法字符（NUL 等）通过清洗兜底
@@ -19,14 +17,13 @@ from PySide6.QtWidgets import QTextBrowser
 
 _log = logging.getLogger(__name__)
 
-
 class PreviewPanel(QTextBrowser):
     """Markdown 预览面板。"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._last_md: str = ""
-        # v0.2.5 P3 audit (L3) 关闭外链跳转：之前 setOpenExternalLinks(True) 会
+        # P3 ) 关闭外链跳转：之前 setOpenExternalLinks(True) 会
         # 让 <a href="file:///..."> 真的打开本地文件，存在被恶意 md 触达任意文件的
         # 风险。改为 setOpenLinks(False)：用户仍可复制链接，但点击不触发导航。
         self.setOpenExternalLinks(False)
@@ -38,7 +35,7 @@ class PreviewPanel(QTextBrowser):
         self.setReadOnly(True)
 
     def _safe_set_source(self, name) -> None:
-        """v0.2.5 P3 audit (L3) 拒绝 file:// / 任意本地路径导航。
+        """ P3 audit 拒绝 file:// / 任意本地路径导航。
 
         走 setSource 的来源：
         - QTextBrowser 点击 <a href="..."> 时（被 setOpenLinks(False) 拦住）

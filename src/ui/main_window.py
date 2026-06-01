@@ -1,13 +1,9 @@
-"""MainWindow 主窗口组装（Task 1.7 + v0.1.1 异步升级）。
-
-按 03 §Task 1.7 + v0.1.1 changelog：
+"""MainWindow 主窗口组装（ + 异步升级）。+ changelog：
 - 顶层 QMainWindow
 - 中心区：左 DropArea + 中 FileList + 右 PreviewPanel（QSplitter 三栏）
 - 信号连接：DropArea.files_dropped → FileList.add_files → 异步转换 → PreviewPanel.set_markdown
 - 状态栏显示"已添加 N 个文件"
-- 窗口标题含 "Lei_MD"
-
-v0.1.1 升级（异步转换 + 进度 + 取消）：
+- 窗口标题含 "Lei_MD" 升级（异步转换 + 进度 + 取消）：
 - 注入 converter（默认 MarkItDownConverter，测试可换 Stub）
 - 选文件 → 启 ConversionWorker（QThread），不阻塞 UI
 - status bar 加 QProgressBar（0~100，转换中可见，结束隐藏）
@@ -33,7 +29,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-# v0.2.3 P2 审计 M4.1：closeEvent 路径下会等 worker 2000ms，超时要 log.warning。
+# closeEvent 路径下会等 worker 2000ms，超时要 log.warning。
 _log = logging.getLogger(__name__)
 
 from src.core.batch_worker import BatchWorker
@@ -46,7 +42,6 @@ from src.ui.file_list import FileList
 from src.ui.i18n import set_locale
 from src.ui.preview_panel import PreviewPanel
 from src.ui.styles import apply_theme
-
 
 class MainWindow(QMainWindow):
     """Lei_MD 主窗口。"""
@@ -65,26 +60,26 @@ class MainWindow(QMainWindow):
 
         # 注入 converter（默认真实 markitdown）
         self._converter = converter if converter is not None else MarkItDownConverter()
-        # 注入 history（v0.2.0，默认 None 兼容 v0.1.x）
+        # 注入 history（，默认 None 兼容.x）
         self._history = history
-        # 注入 config（v0.2.0 Sprint 3，默认 None 时新建内存默认）
+        # 注入 config（，默认 None 时新建内存默认）
         self._config = config_manager if config_manager is not None else ConfigManager()
 
-        # 应用主题（v0.2.0 Sprint 3 Task 2.5）
+        # 应用主题（）
         try:
             apply_theme(self._config.get().theme)
         except Exception:  # noqa: BLE001
             _log.warning("MainWindow.__init__: apply_theme(%r) failed, fallback to 'system'", self._config.get().theme, exc_info=True)
             apply_theme("system")
 
-        # 应用 i18n（v0.2.0 Sprint 3 Task 2.6）
+        # 应用 i18n（）
         try:
             set_locale(self._config.get().language)
         except Exception:  # noqa: BLE001
             _log.warning("MainWindow.__init__: set_locale(%r) failed, fallback to 'en'", self._config.get().language, exc_info=True)
             set_locale("en")
 
-        # 菜单栏（v0.2.0 Sprint 3）
+        # 菜单栏（）
         self._build_menus()
 
         # 三个子组件
@@ -131,7 +126,7 @@ class MainWindow(QMainWindow):
 
         # 当前活跃 worker
         self._active_worker: ConversionWorker | None = None
-        # v0.2.0 Sprint 3 hotfix（H2）：批量转换时取消按钮要能取消 batch
+        # ：批量转换时取消按钮要能取消 batch
         self._active_batch: "BatchWorker | None" = None
 
     # -------- slots --------
@@ -158,7 +153,7 @@ class MainWindow(QMainWindow):
         worker.progress.connect(self._on_worker_progress)
         worker.finished_with_md.connect(self._on_worker_finished)
         worker.error.connect(self._on_worker_error)
-        # v0.2.0：job_done 携带元信息 → history.request_add
+        # job_done 携带元信息 → history.request_add
         if self._history is not None:
             worker.job_done.connect(self._on_job_done)
         # 线程结束自动清引用
@@ -192,7 +187,7 @@ class MainWindow(QMainWindow):
         success: bool,
         error_msg: str,
     ) -> None:
-        """v0.2.0：Worker 完成时携带元信息，转发给 HistoryManager。"""
+        """ ：Worker 完成时携带元信息，转发给 HistoryManager。"""
         if self._history is None:
             return
         self._history.request_add(
@@ -205,7 +200,7 @@ class MainWindow(QMainWindow):
         )
 
     def _on_cancel_clicked(self) -> None:
-        # v0.2.0 Sprint 3 hotfix（H2）：先看 batch（最后启动的活动），再看 single worker
+        # ：先看 batch（最后启动的活动），再看 single worker
         if self._active_batch is not None:
             self._active_batch.cancel()
             self.status.showMessage("已取消批量转换")
@@ -220,13 +215,13 @@ class MainWindow(QMainWindow):
     def _cleanup_worker(self, worker: ConversionWorker) -> None:
         if self._active_worker is worker:
             self._active_worker = None
-        # v0.2.3 P2 审计 M4.1：QThread 必须显式 deleteLater()，
+        # QThread 必须显式 deleteLater()，
         # 否则 force-terminate 时 Qt 会报
         # "QThread: Destroyed while thread is still running"。
         # deleteLater 会在事件循环下一拍把 QObject 子树释放掉。
         worker.deleteLater()
 
-    # -------- 生命周期（v0.2.3 P2 审计 M4.1 / M4.2）--------
+    # -------- 生命周期（  / ）--------
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """窗口关闭：协作式停掉 batch / worker，避免 QThread 被 force-terminate。
@@ -286,13 +281,13 @@ class MainWindow(QMainWindow):
             self._active_batch = None
 
         # 5) 让主线程事件循环消化掉所有 queued job_done / finished signal
-        #    （worker 退出前 emit 的信号走 QueuedConnection，必须在 history.close()
-        #    前处理完，否则 _on_add 会用已 close 的 _conn 报 ProgrammingError）。
+        # （worker 退出前 emit 的信号走 QueuedConnection，必须在 history.close()
+        # 前处理完，否则 _on_add 会用已 close 的 _conn 报 ProgrammingError）。
         QApplication.processEvents()
 
         # 6) 关闭 SQLite 连接（WAL checkpoint + 释放文件锁）。
-        #    v0.2.7 P0（v0.2.6 复审 #1）：之前 close() 从未被调用，
-        #    每次退出都遗留 -wal/-shm 侧车文件 + 文件描述符直到 GC。
+        # （复审 #1）：之前 close() 从未被调用，
+        # 每次退出都遗留 -wal/-shm 侧车文件 + 文件描述符直到 GC。
         if self._history is not None:
             try:
                 self._history.close()
@@ -302,7 +297,7 @@ class MainWindow(QMainWindow):
         # 7) 无论 wait 是否超时，都 accept event（spec 异常路径语义）
         event.accept()
 
-    # -------- 菜单栏（v0.2.0 Sprint 3 集成）--------
+    # -------- 菜单栏（）--------
 
     def _build_menus(self) -> None:
         """构建菜单栏：文件 / 视图 / 帮助。"""
@@ -362,15 +357,15 @@ class MainWindow(QMainWindow):
         QMessageBox.about(
             self,
             "关于 Lei_MD",
-            "Lei_MD v0.2.0\n\n基于 MarkItDown 的桌面 GUI 工具\n\n仓库: github.com/raymondyan-zhijie/Lei_MD",
+            "Lei_MD \n\n基于 MarkItDown 的桌面 GUI 工具\n\n仓库: github.com/raymondyan-zhijie/Lei_MD",
         )
 
-    # -------- 批量转换（v0.2.0 Sprint 3 集成）--------
+    # -------- 批量转换（）--------
 
     def _start_batch(self) -> None:
         """用 ConfigManager.batch_concurrency 启动 BatchWorker。
 
-        v0.2.7 P1 审计（v0.2.6 复审 #3）：运行中守卫 —— 二次点击"全部转换"会
+        审计（）：运行中守卫 —— 二次点击"全部转换"会
         覆盖 ``self._active_batch`` 引用，旧 bw 的 progress/failed signal 仍
         连到旧 slot（lambda 闭包捕获旧 bw，但 progress slot 走 ``self._on_batch_progress``），
         导致状态条上 done 计数被新 / 旧 batch 的 progress 信号交织刷新，看起来
@@ -380,7 +375,7 @@ class MainWindow(QMainWindow):
         （不再派新任务、finalize 路径正常走完），再启动新 batch。状态栏提示
         用户"已取消上一次批量"。
         """
-        # v0.2.7 P1：运行中守卫 —— 先 cancel 旧 batch，避免引用覆盖 + 信号交织
+        # ：运行中守卫 —— 先 cancel 旧 batch，避免引用覆盖 + 信号交织
         if self._active_batch is not None:
             self._active_batch.cancel()
             self.status.showMessage("已取消上一次批量")
@@ -392,7 +387,7 @@ class MainWindow(QMainWindow):
         concurrency = max(1, int(self._config.get().batch_concurrency))
         bw = BatchWorker(self._converter, paths, concurrency=concurrency)
         bw.progress.connect(self._on_batch_progress)
-        # v0.2.3 P2 审计 M4.1：finished 结束后要把 BatchWorker deleteLater()，
+        # finished 结束后要把 BatchWorker deleteLater()，
         # 否则下一次 _start_batch 持有的旧 bw 还活着（内存泄漏 / dangling）。
         # 通过 lambda 透传 bw 引用，slot 内部用完即弃。
         bw.finished.connect(lambda b=bw: self._on_batch_finished(b))
@@ -414,10 +409,10 @@ class MainWindow(QMainWindow):
         self.cancel_button.setVisible(False)
         if self._active_batch is bw:
             self._active_batch = None
-        # v0.2.3 P2 审计 M4.1：BatchWorker 是 QObject 树根，必须 deleteLater()，
+        # BatchWorker 是 QObject 树根，必须 deleteLater()，
         # 否则它内部的 QThreadPool + 已派发的 _ConvertRunnable 不会被回收。
         bw.deleteLater()
 
     def _on_batch_item_failed(self, path: str, err: str) -> None:
-        # 当前简单记到状态栏；v0.3 计划加入错误汇总面板
+        # 当前简单记到状态栏；计划加入错误汇总面板
         self.status.showMessage(f"失败：{Path(path).name} - {err}")

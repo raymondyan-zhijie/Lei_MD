@@ -1,7 +1,5 @@
-"""设置对话框（Task 2.1）。
-
-按 03 §Task 2.1 + 02 §3.3（AppConfig 字段）：
-- 构造时把 ConfigManager 当前配置 copy 到本地 staging（v0.2.3 P2 M3.3 修复）
+"""设置对话框（）。+ 02 §3.3（AppConfig 字段）：
+- 构造时把 ConfigManager 当前配置 copy 到本地 staging（ 修复）
 - UI 输入框读 / 写 staging，**不**直接动 live ConfigManager 实例
 - accept() → staging 字段写回 ConfigManager.update 持久化
 - reject() / 窗口关闭 → staging 直接丢弃，live ConfigManager 完全不动
@@ -18,9 +16,9 @@
 - batch_concurrency: int 1~8  (QSpinBox)
 - llm_api_base/llm_api_key/llm_model: str  (QLineEdit)
 
-SSOT 偏离：02 §3.3 规范用嵌套 llm{} + config_version，Sprint 2 推的 AppConfig
-用了扁平字段 + 无 config_version。Sprint 3 不回头改（v0.2.0-rc1 已发布），
-留 v0.3.0 迁移。
+SSOT 偏离：02 §3.3 规范用嵌套 llm{} + config_version， 推的 AppConfig
+用了扁平字段 + 无 config_version。 不回头改，
+留 迁移。
 """
 from __future__ import annotations
 
@@ -40,7 +38,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
 
 class SettingsDialog(QDialog):
     """Lei_MD 设置对话框。"""
@@ -63,7 +60,7 @@ class SettingsDialog(QDialog):
         self._build_layout()
         self._wire_signals()
 
-        # v0.2.3 P2 audit (M3.3)：构造时把 live config 完整 copy 到本地
+        # audit：构造时把 live config 完整 copy 到本地
         # staging。所有 UI 读 / 写、改 reset 都只动 staging；只有 accept
         # 才把 staging 写回 cm。这样 reset 之后 cancel 不会污染 live cm，
         # 下次打开对话框看到的是真实磁盘值。
@@ -150,7 +147,7 @@ class SettingsDialog(QDialog):
         llm_form.addRow("LLM API Base：", self.llm_api_base_edit)
         llm_form.addRow("LLM API Key：", self.llm_api_key_edit)
         llm_form.addRow("LLM Model：", self.llm_model_edit)
-        root.addWidget(QLabel("── LLM 图片描述（v1.0 P2，可选）──"))
+        root.addWidget(QLabel("── LLM 图片描述（ ，可选）──"))
         root.addWidget(llm_group)
 
         # 按钮行
@@ -168,7 +165,7 @@ class SettingsDialog(QDialog):
     def _load_from_config(self) -> None:
         """从 staging 读当前配置 → 填到 UI。
 
-        v0.2.3 P2 audit (M3.3)：改为从 self._staging 读，而不是
+        audit：改为从 self._staging 读，而不是
         self._cm.get()。这样 UI 反映的是"对话框自己的草稿"，而不是
         live cm——reset 之后 cancel，下次再开对话框看到的是磁盘原值。
         """
@@ -191,7 +188,7 @@ class SettingsDialog(QDialog):
     def _collect_from_ui(self) -> dict:
         """从 UI 读所有字段 → 写 self._staging → 返回 dict（备用）。
 
-        v0.2.3 P2 audit (M3.3)：改为 collect into staging。调用方
+        audit：改为 collect into staging。调用方
         （_on_accept）之后用 staging 写回 cm。这样 reset 之后再
         收集，也只是把 UI 当前值搬到 staging 草稿里，不动 live cm。
         """
@@ -219,7 +216,7 @@ class SettingsDialog(QDialog):
         """确定 → 把 UI 收集到 staging，再用 staging 写回 cm 落盘。"""
         # 先 collect UI → staging，保证 cm.update 收到的是最新用户输入
         self._collect_from_ui()
-        # v0.2.3 P2 audit (M3.3)：用 staging 的字段写回 cm。
+        # audit：用 staging 的字段写回 cm。
         # 这样 reset 之后用户改几个字段再 accept，保存的是用户最终看到
         # 的值（reset 草稿被后续 UI 编辑覆盖），不是"reset 默认 + 用户改的字段"的奇怪混合。
         self._cm.update(**dataclasses.asdict(self._staging))
@@ -227,14 +224,14 @@ class SettingsDialog(QDialog):
 
     def _on_reject(self) -> None:
         """取消 → 不动 config，staging 直接丢弃。"""
-        # v0.2.3 P2 audit (M3.3)：staging 是对话框的本地草稿，关闭 / 取消
+        # audit：staging 是对话框的本地草稿，关闭 / 取消
         # 时 Python 直接 GC 掉就行；self._cm 一次都不碰，磁盘更不会动。
         self.reject()
 
     def _on_reset_defaults(self) -> None:
         """恢复默认 → 把 staging 换成 AppConfig() 默认 + UI 刷新。
 
-        v0.2.3 P2 audit (M3.3)：原实现直接 setattr(self._cm.get(), ...)
+        audit：原实现直接 setattr(self._cm.get(), ...)
         改 live cm。如果用户接着点取消，live cm 已经被污染，下次打开
         对话框看到的字段是"部分 reset"值——典型 in-memory cancel-not-cancel bug。
 

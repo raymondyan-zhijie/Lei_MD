@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-02
+
+v0.3.0 IMPLEMENTATION_VS_PLAN §4 中标记的 3 个候选全部实施。**205/205 测试绿**（v0.3.0 的 157 + 新增 48）。
+
+### Added
+
+- **CI 工作流** (`.github/workflows/test.yml`): ubuntu-latest + windows-latest × Python 3.10/3.11/3.12/3.13 = 8 矩阵 (排除 win+3.10)
+  - 每周一 09:00 UTC 自动跑
+  - `pip install -e ".[dev]"` + `ruff check` + `pytest --tb=short -q`
+  - 替代 v0.3.0 时代的"本地手动 source .venv"流程
+- **Task 2.4 YouTube URL 输入** (规划补齐): `src/core/youtube.py` + 4 个 E_CONVERT_* 错误码 (E_CONVERT_003/004/005)
+  - 支持 4 种 URL 形式: watch?v= / youtu.be/ / shorts/ / embed/
+  - 抓字幕不下载视频,流量极小
+  - 错误码体系完整: 无效 URL / yt-dlp 缺失 / 网络超时 / 视频不可访问 / 无字幕
+- **音频 E_FILE_006 显式拦截** (Task C): 拖入 .mp3/.wav/.ogg/.flac/.m4a/.aac/.wma/.opus **不再静默忽略**,而是
+  - `DropArea.audio_rejected` Signal 触发
+  - MainWindow 弹模态对话框,显示错误码 E_FILE_006 + 错误信息
+  - 4 个新音频扩展名 (.m4a/.aac/.wma/.opus) 加入拦截集
+
+### Added (Tests)
+
+- `tests/test_youtube.py` (30 项): URL 解析 + 错误码映射 + 4 种 URL 形式 SSOT
+- `tests/test_v040_audio_reject.py` (18 项): 音频集合 SSOT + drop 行为 + 错误码注册
+
+### Fixed
+
+- `src/core/youtube.py` YOUTUBE_URL_PATTERNS: 修正 `[\w-]{11}` 贪婪匹配的边界问题
+  ( `waytoolongvideoid12345` 错误匹配前 11 字符)
+
 ## [0.3.0] - 2026-06-02
 
 跨 Sprint 整体审计 + P2/P3 hotfix + 文档清理后的整合 release。**157/157 测试绿灯**（v0.2.2 的 97 + v0.2.3-v0.2.7 新增 60）。

@@ -27,8 +27,11 @@ class ErrorCode(str, Enum):
     E_FILE_006 = "E_FILE_006"   # 拖入音频（ 不支持）
 
     # 转换级
-    E_CONVERT_001 = "E_CONVERT_001"   # 密码保护/加密
-    E_CONVERT_002 = "E_CONVERT_002"   # 文件格式损坏
+    E_CONVERT_001 = "E_CONVERT_001"   # 密码保护/加密 / YouTube 视频不可访问
+    E_CONVERT_002 = "E_CONVERT_002"   # 文件格式损坏 / YouTube 无字幕
+    E_CONVERT_003 = "E_CONVERT_003"   # yt-dlp 未安装
+    E_CONVERT_004 = "E_CONVERT_004"   # YouTube 抓取网络超时
+    E_CONVERT_005 = "E_CONVERT_005"   # 非 YouTube URL
 
     # 系统级
     E_SYS_001 = "E_SYS_001"   # 转换中用户强关（下次启动清理）
@@ -77,6 +80,18 @@ ERROR_MESSAGES: dict[ErrorCode, dict[str, str]] = {
     ErrorCode.E_CONVERT_002: {
         "zh_CN": "无法转换 {filename}：文件已损坏，无法解析",
         "en_US": "Cannot convert {filename}: file is corrupted and cannot be parsed",
+    },
+    ErrorCode.E_CONVERT_003: {
+        "zh_CN": "YouTube 抓取失败：yt-dlp 未安装（pip install yt-dlp）",
+        "en_US": "YouTube fetch failed: yt-dlp not installed (pip install yt-dlp)",
+    },
+    ErrorCode.E_CONVERT_004: {
+        "zh_CN": "YouTube 抓取超时（网络问题）",
+        "en_US": "YouTube fetch timed out (network issue)",
+    },
+    ErrorCode.E_CONVERT_005: {
+        "zh_CN": "不是有效的 YouTube URL：{filename}",
+        "en_US": "Not a valid YouTube URL: {filename}",
     },
     ErrorCode.E_INTERNAL_001: {
         "zh_CN": "内部错误：转换引擎异常（已记录到 crash.log）",

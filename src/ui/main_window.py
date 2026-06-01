@@ -122,6 +122,8 @@ class MainWindow(QMainWindow):
 
         # 信号连接
         self.drop_area.files_dropped.connect(self._on_files_dropped)
+        # v0.4.0 Task C：音频被拒时弹 E_FILE_006 模态
+        self.drop_area.audio_rejected.connect(self._on_audio_rejected)
         self.file_list.file_selected.connect(self._on_file_selected)
 
         # 当前活跃 worker
@@ -135,6 +137,28 @@ class MainWindow(QMainWindow):
         self.file_list.add_files(paths)
         n = self.file_list.count()
         self.status.showMessage(f"已添加 {n} 个文件")
+
+    def _on_audio_rejected(self, audio_paths: list[str]) -> None:
+        """v0.4.0 Task C：音频被 E_FILE_006 拦截，弹模态告知用户。"""
+        from PySide6.QtWidgets import QMessageBox
+
+        # 只显示前 5 个文件名，避免弹窗过宽
+        sample = "\n".join(Path(p).name for p in audio_paths[:5])
+        more = f"\n... 还有 {len(audio_paths) - 5} 个" if len(audio_paths) > 5 else ""
+        from src.core.errors import ErrorCode, ERROR_MESSAGES
+
+        detail = (
+            f"以下音频文件不在 v1.0 支持范围：\n\n{sample}{more}\n\n"
+            f"错误码：{ErrorCode.E_FILE_006.value}\n"
+            f"说明：{ERROR_MESSAGES[ErrorCode.E_FILE_006]['zh_CN']}"
+        )
+        QMessageBox.warning(
+            self,
+            "音频转录暂不支持",
+            detail,
+            QMessageBox.Ok,
+        )
+        log.info("MainWindow rejected %d audio file(s) with E_FILE_006", len(audio_paths))
 
     def _on_file_selected(self, path: str) -> None:
         # 取消上一个 worker（如果有）

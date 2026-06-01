@@ -124,12 +124,12 @@
 
 ## 4. 偏差项后续行动
 
-| 偏差 | 后续 |
-|---|---|
-| ⚠️ Task 0.2 CI/CD 推迟 | v0.4.0 前建 `.github/workflows/test.yml`（windows + ubuntu + python 3.10-3.13 矩阵）。**当前依赖本地 .venv 跑 157/157**，首次跑需 `source .venv/bin/activate` |
-| ⚠️ Task 3.1/3.2 打包推迟 | v1.0 计划。要 PyInstaller + NSIS 在 Windows runner 跑。Linux 容器**不能**出 .exe |
-| ❌ Task 2.4 YouTube URL | v0.4.0 候选。可用 `markitdown`'s YouTubeTranscriptFetcherCli 实现 |
-| ⚠️ Phase 5 音频明确提示 | v0.4.0 候选。DropArea 加 mime type 检查 + 显式 E_FILE_006 弹窗 |
+| 偏差 | 后续 | 状态 |
+|---|---|---|
+| ⚠️ Task 0.2 CI/CD 推迟 | v0.4.0 前建 `.github/workflows/test.yml`（windows + ubuntu + python 3.10-3.13 矩阵） | ✅ **v0.4.0 已完成**（8 矩阵 + 每周一自动跑） |
+| ⚠️ Task 3.1/3.2 打包推迟 | v1.0 计划。要 PyInstaller + NSIS 在 Windows runner 跑。Linux 容器**不能**出 .exe | ⏳ v1.0 |
+| ❌ Task 2.4 YouTube URL | v0.4.0 候选。可用 `markitdown`'s YouTubeTranscriptFetcherCli 实现 | ✅ **v0.4.0 已完成**（`src/core/youtube.py` + 4 个 E_CONVERT_* 错误码）|
+| ⚠️ Phase 5 音频明确提示 | v0.4.0 候选。DropArea 加 mime type 检查 + 显式 E_FILE_006 弹窗 | ✅ **v0.4.0 已完成**（`DropArea.audio_rejected` Signal + MainWindow 模态） |
 
 ---
 

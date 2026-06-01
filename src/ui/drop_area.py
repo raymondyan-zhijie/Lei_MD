@@ -42,6 +42,12 @@ SUPPORTED_EXTENSIONS: set[str] = {
     ".txt", ".md", ".rst", ".log",
 }
 
+# 音频扩展名集合（v0.4.0 Task C：显式拦截 + E_FILE_006 提示）
+# v1.0 不支持音频转录（仅 v1.1+ 离线实现）
+AUDIO_EXTENSIONS: set[str] = {
+    ".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".wma", ".opus",
+}
+
 # P3 ) 目录递归限深 + 限文件数，防止用户拖入「超大共享盘 / 深层
 # 嵌套目录」把 GUI 卡死。超限后截断 + log.warning。
 MAX_RECURSE_DEPTH = 10
@@ -52,12 +58,19 @@ class DropArea(QLabel):
 
     # 拖入有效文件后 emit（参数：绝对路径列表，已过滤 + 目录已递归）
     files_dropped = Signal(list)
+    # v0.4.0 Task C：拖入音频时单独 emit，UI 层据此弹 E_FILE_006 模态
+    audio_rejected = Signal(list)  # 参数：被拒的音频绝对路径列表
 
     DEFAULT_PLACEHOLDER = (
         "拖拽文件到此处开始转换\n\n"
         "支持 PDF · Word · Excel · PPT · HTML · EPUB · 图片 · ZIP 等\n"
         "（音频 MP3/WAV 暂不支持 — 详见 + 路线图）"
     )
+
+    @staticmethod
+    def audio_extensions() -> set[str]:
+        """返回被 E_FILE_006 拦截的音频扩展名集合（测试可见）。"""
+        return AUDIO_EXTENSIONS
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -102,6 +115,7 @@ class DropArea(QLabel):
             return
 
         paths: list[str] = []
+        audio_paths: list[str] = []
         for url in event.mimeData().urls():
             local = url.toLocalFile()
             if not local:
@@ -119,14 +133,23 @@ class DropArea(QLabel):
                         "some files omitted",
                         MAX_RECURSE_FILES, MAX_RECURSE_DEPTH, p,
                     )
-            elif p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS:
-                paths.append(str(p.resolve()))
+            elif p.is_file():
+                ext = p.suffix.lower()
+                if ext in SUPPORTED_EXTENSIONS:
+                    paths.append(str(p.resolve()))
+                elif ext in AUDIO_EXTENSIONS:
+                    # v0.4.0 Task C：音频单独收集，dropEvent 末尾统一 emit
+                    audio_paths.append(str(p.resolve()))
             # 其他情况（不存在的路径/不支持的格式）静默忽略
 
         if paths:
             self.files_dropped.emit(paths)
             event.acceptProposedAction()
-        else:
+        if audio_paths:
+            # 显式提示用户：音频不在 v1.0 范围（E_FILE_006），不是静默失败
+            self.audio_rejected.emit(audio_paths)
+            log.info("DropArea rejected %d audio file(s) with E_FILE_006", len(audio_paths))
+        if not paths and not audio_paths:
             # 拖入了但全部不被支持 → 拒绝
             event.ignore()
 

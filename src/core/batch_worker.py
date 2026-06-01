@@ -15,6 +15,7 @@
 """
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,13 @@ from PySide6.QtCore import (
     Signal,
     Slot,
 )
+
+# BatchWorker 状态机（v0.2.0 审计 M1.3）
+# 0=IDLE（未启动）  1=RUNNING  2=CANCELLED  3=FINISHED（自然完成）
+STATE_IDLE = 0
+STATE_RUNNING = 1
+STATE_CANCELLED = 2
+STATE_FINISHED = 3
 
 
 class _ConvertRunnable(QRunnable):
@@ -42,13 +50,17 @@ class _ConvertRunnable(QRunnable):
         self._converter = converter
         self._file_path = file_path
         self.signals = _ConvertRunnable._Signals()
-        self._cancelled = False
+        # v0.2.0 审计 M1.2：用 threading.Event 保证跨线程内存可见性
+        # 之前 self._cancelled: bool 在 worker 线程 run() 和主线程 cancel()
+        # 之间无 happens-before 关系，bool 写在 Py3 上不是原子的。
+        # Event.set()/is_set() 是线程安全的，set 后所有线程的 is_set() 立刻返回 True。
+        self._cancel_event = threading.Event()
 
     def cancel(self) -> None:
-        self._cancelled = True
+        self._cancel_event.set()
 
     def run(self) -> None:
-        if self._cancelled:
+        if self._cancel_event.is_set():
             # cancel 在 start 之前被设
             return
         try:
@@ -102,9 +114,20 @@ class BatchWorker(QObject):
         self._pool.setMaxThreadCount(self._concurrency)
         # 跟踪已派发 runnable（cancel 时设 cancelled）
         self._dispatched: list[_ConvertRunnable] = []
+        # v0.2.0 审计 M1.3：状态机，start() 二次调用守卫用
+        self._state: int = STATE_IDLE
+        # v0.2.2 hotfix H5 留的 _finalize_emitted，在 __init__ 显式置位
+        # 避免 cancel() 路径用 getattr 兜底（状态更清晰）
+        self._finalize_emitted: bool = False
 
     def start(self) -> None:
         """派发所有任务（异步，分批让 cancel 能介入）。"""
+        # v0.2.0 审计 M1.3：start() 二次调用守卫
+        # 二次 start() 之前会让 _idx 复位、emit 假 progress 并双倍 dispatch。
+        # 只有 IDLE 状态才允许进入 RUNNING。
+        if self._state != STATE_IDLE:
+            return
+        self._state = STATE_RUNNING
         self._idx = 0
         # 启动 0 进度
         self.progress.emit(0, self._total)
@@ -113,6 +136,11 @@ class BatchWorker(QObject):
 
     def _dispatch_next(self) -> None:
         """派发一个任务（受 cancel 约束）。"""
+        # v0.2.0 审计 M1.3：_dispatch_next() 也加状态守卫
+        # IDLE: 还没 start()（不应该被调，_on_item_done 不会触发）
+        # CANCELLED / FINISHED: 不再派新任务
+        if self._state != STATE_RUNNING:
+            return
         self._mutex.lock()
         if self._cancelled or self._idx >= self._total:
             self._mutex.unlock()
@@ -134,11 +162,22 @@ class BatchWorker(QObject):
 
         注：finished 只在所有路径（包括未跑的）都"结算"后发。
         这里把剩余路径的 done_count 补齐，让 finished 触发。
+
+        v0.2.0 审计 M1.3：cancel() 允许在 IDLE 或 RUNNING 调用，
+        已处于 CANCELLED/FINISHED 时是 no-op（不重复进入 finalize 路径）。
         """
+        # v0.2.0 审计 M1.3：状态守卫
+        # 二次 cancel 进来直接 return，避免双重 finalize emit。
+        if self._state not in (STATE_IDLE, STATE_RUNNING):
+            return
+        self._state = STATE_CANCELLED
+        # v0.2.2 hotfix H5：cancel finalize 路径内部对 _done_count 的赋值
+        # 已经在 mutex 内（下方 self._done_count = self._total），读 _done_count
+        # 仅在 progress.emit 用，emit 是主线程排队的，happens-after 自然成立。
         self._mutex.lock()
         self._cancelled = True
         for t in self._dispatched:
-            t.cancel()
+            t.cancel()  # M1.2：threading.Event.set() 是原子的
         # 标记 finalize 一次完成，避免与 _on_item_done 双重 finished emit
         self._finalize_emitted = getattr(self, "_finalize_emitted", False)
         already_finalized = self._finalize_emitted
@@ -189,6 +228,11 @@ class BatchWorker(QObject):
                 self._mutex.unlock()
                 return
             self._finalize_emitted = True
+            # v0.2.0 审计 M1.3：自然完成 → 置 FINISHED
+            # cancel 路径也会走 _finalize 逻辑（cancel 自己把 _state 改成 CANCELLED），
+            # 所以这里只在原状态是 RUNNING 时才覆写为 FINISHED。
+            if self._state == STATE_RUNNING:
+                self._state = STATE_FINISHED
             self._mutex.unlock()
             # 等所有 runnable 真正结束再发 finished（用 QTimer.singleShot 0 让事件循环跑一拍）
             QTimer.singleShot(0, self.finished.emit)

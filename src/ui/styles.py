@@ -51,6 +51,7 @@ def is_system_dark() -> bool:
     try:
         result = darkdetect.theme()
     except Exception:  # noqa: BLE001
+        log.warning("is_system_dark: darkdetect.theme() failed; treating as light", exc_info=True)
         return False
     return str(result).lower() == "dark"
 

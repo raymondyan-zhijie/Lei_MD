@@ -73,12 +73,14 @@ class MainWindow(QMainWindow):
         try:
             apply_theme(self._config.get().theme)
         except Exception:  # noqa: BLE001
+            _log.warning("MainWindow.__init__: apply_theme(%r) failed, fallback to 'system'", self._config.get().theme, exc_info=True)
             apply_theme("system")
 
         # 应用 i18n（v0.2.0 Sprint 3 Task 2.6）
         try:
             set_locale(self._config.get().language)
         except Exception:  # noqa: BLE001
+            _log.warning("MainWindow.__init__: set_locale(%r) failed, fallback to 'en'", self._config.get().language, exc_info=True)
             set_locale("en")
 
         # 菜单栏（v0.2.0 Sprint 3）
@@ -248,6 +250,7 @@ class MainWindow(QMainWindow):
             try:
                 self._active_batch.cancel()
             except RuntimeError:  # bw 已 deleteLater()，被 PyQt 哨兵抛出
+                _log.warning("MainWindow.closeEvent: BatchWorker.cancel() raised RuntimeError (对象已 deleteLater)", exc_info=True)
                 pass
 
         # 2) worker 取消（None-safe）
@@ -255,6 +258,7 @@ class MainWindow(QMainWindow):
             try:
                 self._active_worker.cancel()
             except RuntimeError:  # 同上
+                _log.warning("MainWindow.closeEvent: ConversionWorker.cancel() raised RuntimeError (对象已 deleteLater)", exc_info=True)
                 pass
 
         # 3) 等 QThread 真正结束（最多 2s）
@@ -322,6 +326,7 @@ class MainWindow(QMainWindow):
             try:
                 apply_theme(self._config.get().theme)
             except Exception:  # noqa: BLE001
+                _log.warning("MainWindow._open_settings_dialog: apply_theme(%r) failed", self._config.get().theme, exc_info=True)
                 pass
 
     def _open_history_panel(self) -> None:

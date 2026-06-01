@@ -13,7 +13,11 @@
 """
 from __future__ import annotations
 
+import logging
+
 from PySide6.QtWidgets import QTextBrowser
+
+_log = logging.getLogger(__name__)
 
 
 class PreviewPanel(QTextBrowser):
@@ -40,6 +44,7 @@ class PreviewPanel(QTextBrowser):
         except Exception:
             # 极端输入兜底：当 setMarkdown 抛错（PySide6 6.9 已知极少场景），
             # 降级到 setPlainText 让用户至少看到内容
+            _log.warning("PreviewPanel.setMarkdown failed; falling back to setPlainText", exc_info=True)
             self.setPlainText(cleaned)
 
     def clear(self) -> None:

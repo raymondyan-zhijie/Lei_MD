@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -25,6 +26,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+_log = logging.getLogger(__name__)
 
 
 class HistoryPanel(QWidget):
@@ -123,6 +126,7 @@ class HistoryPanel(QWidget):
                 dt = datetime.fromisoformat(e.created_at)
                 time_str = dt.strftime("%Y-%m-%d %H:%M")
             except (ValueError, TypeError):
+                _log.warning("HistoryPanel._populate: bad created_at=%r, showing raw", e.created_at, exc_info=True)
                 time_str = e.created_at
             cells = [
                 name,

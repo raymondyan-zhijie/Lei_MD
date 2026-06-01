@@ -15,6 +15,11 @@ log = logging.getLogger(__name__)
 # Default locale when none is set
 DEFAULT_LOCALE = "en"
 
+# v0.2.5 P3 audit (L1) 白名单：允许通过 set_locale() 显式切换的 locale。
+# 不在白名单里的输入一律 fallback 到 DEFAULT_LOCALE，避免路径拼接（f"{locale}.json"）
+# 时把攻击者控制的字符串拼到 _LOCALES_DIR 里。
+VALID_LOCALES: frozenset[str] = frozenset({"system", "zh_CN", "en_US"})
+
 # Built-in resource directory
 _LOCALES_DIR = Path(__file__).resolve().parent.parent / "resources" / "locales"
 
@@ -58,8 +63,19 @@ if _default_zh_path.is_file():
 
 
 def set_locale(locale: str, translations: Optional[dict[str, str]] = None) -> Translator:
-    """Set the default locale and optionally load translations."""
+    """Set the default locale and optionally load translations.
+
+    v0.2.5 P3 audit (L1): locale 不在 ``VALID_LOCALES`` 白名单时，fallback 到
+    ``DEFAULT_LOCALE``（不再用攻击者控制的字符串拼 ``_LOCALES_DIR / f"{locale}.json"``）。
+    """
     global _default
+    # 白名单：拒绝未授权的 locale 字符串
+    if locale not in VALID_LOCALES:
+        log.warning(
+            "set_locale(%r) not in whitelist %s; falling back to %r",
+            locale, sorted(VALID_LOCALES), DEFAULT_LOCALE,
+        )
+        locale = DEFAULT_LOCALE
     _default = Translator(locale)
     if translations is not None:
         _default.load(translations)

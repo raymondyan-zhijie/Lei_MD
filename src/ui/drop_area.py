@@ -14,11 +14,15 @@
 """
 from __future__ import annotations
 
+import logging
+import os
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import QLabel
+
+log = logging.getLogger(__name__)
 
 
 # v1.0 支持的扩展名（与 01 §3.1 F2 + 02 §1.1 + 03 §Task 1.3 SUPPORTED 一致）
@@ -38,6 +42,11 @@ SUPPORTED_EXTENSIONS: set[str] = {
     # 文本
     ".txt", ".md", ".rst", ".log",
 }
+
+# v0.2.5 P3 audit (L2) 目录递归限深 + 限文件数，防止用户拖入「超大共享盘 / 深层
+# 嵌套目录」把 GUI 卡死。超限后截断 + log.warning。
+MAX_RECURSE_DEPTH = 10
+MAX_RECURSE_FILES = 2000
 
 
 class DropArea(QLabel):
@@ -101,10 +110,17 @@ class DropArea(QLabel):
                 continue
             p = Path(local)
             if p.is_dir():
-                # 递归展开目录中所有支持文件
-                for child in p.rglob("*"):
-                    if child.is_file() and child.suffix.lower() in SUPPORTED_EXTENSIONS:
-                        paths.append(str(child.resolve()))
+                # v0.2.5 P3 audit (L2) 用 os.walk 手动限深 + 限文件数，
+                # 防止用户拖入「超大共享盘 / 深层嵌套目录」卡死 GUI。
+                truncated = self._collect_files_from_dir(
+                    p, paths, MAX_RECURSE_DEPTH, MAX_RECURSE_FILES,
+                )
+                if truncated:
+                    log.warning(
+                        "DropArea dir walk truncated at %d files / %d depth (%s); "
+                        "some files omitted",
+                        MAX_RECURSE_FILES, MAX_RECURSE_DEPTH, p,
+                    )
             elif p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS:
                 paths.append(str(p.resolve()))
             # 其他情况（不存在的路径/不支持的格式）静默忽略
@@ -115,3 +131,41 @@ class DropArea(QLabel):
         else:
             # 拖入了但全部不被支持 → 拒绝
             event.ignore()
+
+    @staticmethod
+    def _collect_files_from_dir(
+        root: Path,
+        out: list[str],
+        max_depth: int,
+        max_files: int,
+    ) -> bool:
+        """递归收集 ``root`` 下所有支持的扩展名。
+
+        v0.2.5 P3 audit (L2)：
+
+        - ``max_depth``：从 ``root`` 算起的最大**子目录**层数。
+          ``max_depth=0`` 表示只看 ``root`` 直接子文件（不递归）；
+          ``max_depth=1`` 表示下钻 1 层；依此类推。
+          到达限制层后**不进入**该目录、也**不收集**其内部文件。
+        - ``max_files``：已收集的总文件数上限。到达后立刻停止并返回 ``True``。
+        - 返回值 ``True`` = 触发了 max_files 截断；``False`` = 自然结束。
+        """
+        root = root.resolve()
+        truncated = False
+        # os.walk 不会自然限深，用 depth 控制 + 自行比较
+        for dirpath, dirnames, filenames in os.walk(str(root)):
+            # 计算当前目录相对 root 的深度：root 是 0，每多一层 +1
+            rel = os.path.relpath(dirpath, str(root))
+            depth = 0 if rel == "." else rel.count(os.sep) + 1
+            if depth >= max_depth:
+                # 到达限制层：不进入该目录，也不收集其内部文件
+                dirnames[:] = []
+                continue
+            for name in filenames:
+                if len(out) >= max_files:
+                    truncated = True
+                    return truncated
+                child = Path(dirpath) / name
+                if child.suffix.lower() in SUPPORTED_EXTENSIONS:
+                    out.append(str(child.resolve()))
+        return truncated

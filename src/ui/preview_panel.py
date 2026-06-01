@@ -26,9 +26,43 @@ class PreviewPanel(QTextBrowser):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._last_md: str = ""
-        self.setOpenExternalLinks(True)
+        # v0.2.5 P3 audit (L3) 关闭外链跳转：之前 setOpenExternalLinks(True) 会
+        # 让 <a href="file:///..."> 真的打开本地文件，存在被恶意 md 触达任意文件的
+        # 风险。改为 setOpenLinks(False)：用户仍可复制链接，但点击不触发导航。
+        self.setOpenExternalLinks(False)
+        self.setOpenLinks(False)
+        # 重写 setSource 拒绝 file:// —— 任何绕过 Qt link 机制的导航（键盘 /
+        # QDesktopServices）也会被这里兜住。
+        self.setSource = self._safe_set_source  # type: ignore[method-assign]
         # 禁止编辑（只读）
         self.setReadOnly(True)
+
+    def _safe_set_source(self, name) -> None:
+        """v0.2.5 P3 audit (L3) 拒绝 file:// / 任意本地路径导航。
+
+        走 setSource 的来源：
+        - QTextBrowser 点击 <a href="..."> 时（被 setOpenLinks(False) 拦住）
+        - 直接 setSource(...) 调用
+        - loadResource(QTextDocument.ImageResource, ...) 不走 setSource
+
+        仅放过 http(s) / 空 / 非本地 scheme。
+        """
+        try:
+            from PySide6.QtCore import QUrl  # local import to avoid module-level dep
+            if isinstance(name, QUrl):
+                url = name
+            else:
+                url = QUrl(str(name))
+            scheme = url.scheme().lower()
+            if scheme in ("file", ""):
+                _log.warning(
+                    "PreviewPanel blocked link to %s (scheme=%r)", url.toString(), scheme,
+                )
+                return
+            # 其余（http/https/mailto/...）让基类正常处理
+            super().setSource(url)
+        except Exception:  # noqa: BLE001
+            _log.warning("PreviewPanel._safe_set_source failed", exc_info=True)
 
     def set_markdown(self, markdown: str) -> None:
         """设置并渲染 Markdown。

@@ -111,6 +111,11 @@ class ConversionError(Exception):
         super().__init__(message)
         # 用户消息属性
         self.user_message = message
+        # v0.2.5 P3 audit (L4) 把 cause 挂到 __cause__，让
+        # ``raise ConversionError(...) from e`` 的语义链对 traceback 可见，
+        # 同时也兼容调用方显式 ``cause=`` 传参。
+        if cause is not None:
+            self.__cause__ = cause
 
     def get_message(self, lang: str = "zh_CN") -> str:
         """按语言取本地化消息。"""

@@ -2,8 +2,10 @@
 
 > **项目名称：** Lei_MD  
 > **品牌：** leimengde  
-> **版本：** v0.1.0  
-> **日期：** 2026-06-01
+> **版本：** 规划期快照（实际实施见 [CHANGELOG](../CHANGELOG.md)）  
+> **日期：** 2026-06-01  
+>  
+> 本文档为**项目初始规划期**的原始快照。规划 vs v0.3.0 实际实施的对照表见 [IMPLEMENTATION_VS_PLAN.md](IMPLEMENTATION_VS_PLAN.md)。
 
 > **SSOT 索引**：本文档是以下主题的**权威定义**：
 > - §2 用户画像

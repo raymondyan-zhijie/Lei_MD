@@ -1,7 +1,9 @@
 # Lei_MD 测试计划
 
 > **品牌：** leimengde  
-> **版本：** v0.1.0 | **日期：** 2026-06-01
+> **版本：** 规划期快照（实际实施见 [CHANGELOG](../CHANGELOG.md)） | **日期：** 2026-06-01  
+>  
+> 本文档为**项目初始规划期**的原始快照。v0.3.0 实际测试基线（157 测试 / 28 文件）见 [IMPLEMENTATION_VS_PLAN.md](IMPLEMENTATION_VS_PLAN.md)。
 
 > **SSOT 索引**：本文档是测试相关的**权威定义**。
 > 错误码体系详见 [02-architecture.md §6](02-architecture.md)，开发任务详见 [03-development-plan.md](03-development-plan.md)。
@@ -321,7 +323,7 @@ tests/fixtures/
 
 ## 9. CI 集成
 
-CI 工作流的**完整 yaml** 见 [03-development-plan.md §Task 0.2 (L127-185)](03-development-plan.md)：
+CI 工作流的**完整 yaml** 见 [03-development-plan.md](03-development-plan.md) 任务 0.2 段落（L127-185）：
 - `test` job：windows-latest × Python 3.10/3.11/3.12/3.13 矩阵 + `pytest tests/ -v --cov=src/`
 - `lint` job：ubuntu-latest + `ruff check src/ tests/`
 - `build` job：windows-latest + `python scripts/build.py`（PyInstaller 干跑，验证打包可成功；**不**上传 artifact）

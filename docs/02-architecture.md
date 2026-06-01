@@ -1,7 +1,9 @@
 # Lei_MD 架构设计文档
 
 > **品牌：** leimengde  
-> **版本：** v0.1.0 | **日期：** 2026-06-01
+> **版本：** 规划期快照（实际实施见 [CHANGELOG](../CHANGELOG.md)） | **日期：** 2026-06-01  
+>  
+> 本文档为**项目初始规划期**的原始快照。规划 vs v0.3.0 实际实施的对照表见 [IMPLEMENTATION_VS_PLAN.md](IMPLEMENTATION_VS_PLAN.md)。
 
 > **SSOT 索引**：本文档是以下主题的**权威定义**：
 > - §1 技术选型（PySide6 + 关键依赖）
@@ -242,7 +244,7 @@ Lei_MD/
 - Signal 串行化保证**逻辑上只有一个写者**（主线程），从源头消除竞态
 - 两者结合：写者绝对无冲突 + 读者与写者完全并发
 
-**实现要点**（详见 03 Task 1.9）：
+**实现要点**（详见 [03-development-plan.md](03-development-plan.md) 历史任务 1.9 段落）：
 
 ```python
 # src/core/history.py
@@ -333,7 +335,7 @@ CREATE TABLE history (
 | `config_version: 2+` | 未来 | 启动时检测 → 调用 `migrate(old_version, data)` 链式迁移 |
 | 缺失字段 | 任何版本 | 视为 `config_version: 0`（v1.0 之前开发期）→ 用默认值补全 |
 
-**迁移函数**（伪代码，详见 03 Task 1.8）：
+**迁移函数**（伪代码，详见 [03-development-plan.md](03-development-plan.md) 历史任务 1.8 段落）：
 
 ```python
 # src/core/config.py

@@ -9,14 +9,20 @@
 >  
 > **Tech Stack:** Python 3.10 ~ 3.13, PySide6, MarkItDown[all], SQLite, PyInstaller + NSIS  
 >  
-> **总时间预估:** v0.1.0 MVP 4-6 周（保守，非 2 周）
+> **总时间预估:** MVP 4-6 周（保守，非 2 周）
+>
+> ⚠️ **本文档状态**：**历史规划档案**。v0.1.0 → v0.3.0 已基于本文档实施完成。
+> 规划任务（Phase 0 ~ 5）大部分已落地，详见对照表 [IMPLEMENTATION_VS_PLAN.md](IMPLEMENTATION_VS_PLAN.md)。
+> 实际实施记录见 [CHANGELOG.md](../CHANGELOG.md) v0.1.0 / v0.2.0 / v0.3.0 三段。
+>
+> 本文件中保留的"Phase 0 ~ 5 / Task 0.1 ~ 5.x"章节是**实施索引**（按规划顺序），方便回溯"为什么这个 Task 出现"。任务标题保留，但版本/阶段标签已剥离。
 
 > **SSOT 索引**：本文档是**开发任务分解**的权威定义。
 > 技术选型见 [02 §1](02-architecture.md)，错误处理见 [02 §6](02-architecture.md)，测试见 [04-testing-plan.md](04-testing-plan.md)，发布见 [05-release-plan.md](05-release-plan.md)，上游更新见 [06-dependency-update-strategy.md](06-dependency-update-strategy.md)。
 
 ---
 
-## Phase 0: 项目初始化 (Sprint 0)
+## Phase 0: 项目初始化
 
 ### Task 0.1: 创建项目骨架
 
@@ -190,7 +196,7 @@ jobs:
 
 ---
 
-## Phase 1: 核心功能 (Sprint 1-2) — MVP v0.1.0
+## Phase 1: 核心功能 — MVP
 
 ### Task 1.1: 程序入口与窗口骨架
 
@@ -941,7 +947,7 @@ class HistoryManager(QObject):
         self._conn.close()
 ```
 
-**ConverterWorker 中的使用示例**（03 Task 1.4 配合）：
+**ConverterWorker 中的使用示例**（配合任务 1.4）：
 
 ```python
 class ConverterWorker(QObject):
@@ -969,7 +975,7 @@ class ConverterWorker(QObject):
 
 ---
 
-## Phase 2: 增强功能 (Sprint 3) — v0.2.0
+## Phase 2: 增强功能
 
 ### Task 2.1: 设置对话框
 
@@ -1009,7 +1015,7 @@ class ConverterWorker(QObject):
 
 ---
 
-## Phase 3: 打包与交付 (Sprint 4) — v1.0.0
+## Phase 3: 打包与交付（v1.0 计划）
 
 ### Task 3.1: PyInstaller 打包脚本
 
@@ -1086,7 +1092,7 @@ def qapp():
 
 ---
 
-## Phase 5: 最终检查清单 v1.0.0
+## Phase 5: 最终检查清单（v1.0 收尾）
 
 - [ ] 拖拽 PDF/Word/Excel/PPT/HTML/图片/ZIP 均可成功转换
 - [ ] 拖入目录时自动递归展开

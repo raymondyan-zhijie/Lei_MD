@@ -1,7 +1,9 @@
 # Lei_MD 发布与维护计划
 
 > **品牌：** leimengde  
-> **版本：** v0.1.0 | **日期：** 2026-06-01
+> **版本：** 规划期快照（实际发布见 [CHANGELOG](../CHANGELOG.md)） | **日期：** 2026-06-01  
+>  
+> 本文档为**项目初始规划期**的原始快照。v0.3.0 已发布（pip + GitHub Release），实际发布流程见 [IMPLEMENTATION_VS_PLAN.md](IMPLEMENTATION_VS_PLAN.md)。
 
 > **SSOT 索引**：本文档是以下主题的**权威定义**：
 > - §1 版本策略与里程碑
@@ -23,14 +25,17 @@
 
 ### 里程碑
 
-> **总时间预估**（v0.1.0 MVP）: 4-6 周（保守估算，详见 [03-development-plan.md](03-development-plan.md)）
+> **总时间预估**（MVP）: 4-6 周（保守估算，详见 [03-development-plan.md](03-development-plan.md)）
 
 ```
-v0.1.0  ← MVP: 拖拽转换 + 预览 + 导出                       (Sprint 1-2, 4-6 周)
-v0.2.0  ← 增强: 设置/批量/LLM/深色/中文/历史/YouTube         (Sprint 3)
-v1.0.0  ← 正式: 打包/NSIS 安装包/用户文档/第一正式版         (Sprint 4)
-v1.x.0  ← 持续迭代                                          (每月)
+v0.1.0  ← MVP: 拖拽转换 + 预览 + 导出                          （已发布，详见 CHANGELOG）
+v0.2.0  ← 增强: 设置/批量/LLM/深色/中文/历史/YouTube            （已发布，详见 CHANGELOG）
+v0.3.0  ← 审计/P0-P3 hotfix/6 维度复审/文档清理                  （已发布，157/157 绿，2026-06-02）
+v1.0.0  ← 正式: 打包/NSIS 安装包/用户文档/第一正式版             （规划中）
+v1.x.0  ← 持续迭代                                              （每月）
 ```
+
+> **版本对应实施记录**：见 [CHANGELOG.md](../CHANGELOG.md) 与 [IMPLEMENTATION_VS_PLAN.md](IMPLEMENTATION_VS_PLAN.md)。
 
 ## 2. 发布流程
 

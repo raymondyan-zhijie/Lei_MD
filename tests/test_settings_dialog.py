@@ -135,7 +135,15 @@ def test_settings_dialog_has_all_field_widgets(qtbot, config_in_tmp):
 # ----------- reset to defaults -----------
 
 def test_settings_dialog_reset_to_defaults(qtbot, config_in_tmp):
-    """reset_to_defaults 按钮 → UI 重置到默认（不 save）。"""
+    """reset_to_defaults 按钮 → UI 重置到默认（不 save、不污染 live cm）。
+
+    v0.2.3 P2 audit (M3.3) 修复要点：
+    - reset 之前把 live config 改成 en_US / dark / 200
+    - reset 之后：UI 应回到默认（"system"/"system"/50）
+    - live cm 引用**完全不动**——这是新行为；之前 buggy 版本会直接
+      setattr live cm，被 cancel 之后留下"半 reset"状态。
+    - 磁盘也未变：重新 load 看到原始 en_US。
+    """
     from src.core.config import AppConfig, ConfigManager
     from src.ui.settings_dialog import SettingsDialog
     cm = config_in_tmp
@@ -155,9 +163,91 @@ def test_settings_dialog_reset_to_defaults(qtbot, config_in_tmp):
     assert dlg.theme_combo.currentText() == "system"
     assert dlg.max_history_spin.value() == 50
 
-    # 内存中 cm 引用被改（reset 把 UI 反映到内存，但不 save）
-    assert cm2.get().language == "system"
+    # v0.2.3 P2 audit (M3.3)：live cm **未被 reset 污染**。
+    # 之前 buggy 版本会断言 cm2.get().language == "system"（错的）。
+    # 正确语义：reset 只动 staging + UI，cm 一行都不碰。
+    assert cm2.get().language == "en_US"
+    assert cm2.get().theme == "dark"
+    assert cm2.get().max_history == 200
 
     # 重新 load → 磁盘未变（reset 不 save）
     cm3 = ConfigManager()
     assert cm3.get().language == "en_US"
+
+
+# ----------- v0.2.3 P2 audit (M3.3) regression -----------
+
+def test_settings_dialog_reset_then_cancel_does_not_mutate_live_cm(
+    qtbot, config_in_tmp
+):
+    """reset → cancel → 下次打开对话框，所有字段仍是原值（live cm 未被改）。
+
+    v0.2.3 P2 audit (M3.3) 报告的核心 bug：
+      "Mutates the live self._cm.get() dataclass instance in place (L207-209)
+       before the user clicks OK. If the user then clicks Cancel, the in-memory
+       config is already reset, and any subsequent ConfigManager.update(...)
+       call (e.g., the next time the user opens the dialog and clicks OK)
+       will save the partially-reset values. The user thinks they canceled
+       but the change persists."
+
+    复现 + 验证：
+    1. cm 初始值 language=en_US / theme=dark / max_history=200
+    2. 打开对话框，load_from_config 看到 en_US 等
+    3. 用户点 "恢复默认" → UI 立刻变 system
+    4. 用户点 "取消" → 关闭对话框，staging 丢弃
+    5. **关键**：cm2.get().language 仍应是 en_US（之前 buggy 版本会是 system）
+    6. 再开一个对话框 → load_from_config 应读出 en_US（staging 重新 copy）
+    7. 磁盘仍未变
+    """
+    from src.core.config import ConfigManager
+    from src.ui.settings_dialog import SettingsDialog
+    cm = config_in_tmp
+    cm.update(language="en_US", theme="dark", max_history=200)
+    cm.save()
+    cm2 = ConfigManager()
+
+    # ---- 第一次打开对话框 ----
+    dlg1 = SettingsDialog(cm2)
+    qtbot.addWidget(dlg1)
+
+    # 初始 load 看到磁盘原值
+    assert dlg1.language_combo.currentText() == "en_US"
+    assert dlg1.theme_combo.currentText() == "dark"
+    assert dlg1.max_history_spin.value() == 200
+
+    # 用户点 reset → UI 变默认
+    dlg1._on_reset_defaults()
+    assert dlg1.language_combo.currentText() == "system"
+    assert dlg1.theme_combo.currentText() == "system"
+    assert dlg1.max_history_spin.value() == 50
+
+    # 此时 live cm **完全不动**（这是修复的核心断言）
+    assert cm2.get().language == "en_US"
+    assert cm2.get().theme == "dark"
+    assert cm2.get().max_history == 200
+
+    # 用户点 cancel
+    dlg1._on_reject()
+
+    # 关键：cancel 之后 cm 仍应是 en_US
+    assert cm2.get().language == "en_US"
+    assert cm2.get().theme == "dark"
+    assert cm2.get().max_history == 200
+
+    # ---- 第二次打开对话框（模拟"用户再次点开设置"）----
+    dlg2 = SettingsDialog(cm2)
+    qtbot.addWidget(dlg2)
+
+    # 应该看到磁盘原值 en_US（如果 buggy 看到 "system"——是 reset 污染的痕迹）
+    assert dlg2.language_combo.currentText() == "en_US", (
+        "M3.3 regression: 第二次打开对话框看到 reset 后的值，"
+        "说明 live cm 被 cancel 之前的 reset 污染了"
+    )
+    assert dlg2.theme_combo.currentText() == "dark"
+    assert dlg2.max_history_spin.value() == 200
+
+    # 磁盘也仍应是 en_US（reset 不 save）
+    cm3 = ConfigManager()
+    assert cm3.get().language == "en_US"
+    assert cm3.get().theme == "dark"
+    assert cm3.get().max_history == 200

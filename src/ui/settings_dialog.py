@@ -1,10 +1,12 @@
 """设置对话框（Task 2.1）。
 
 按 03 §Task 2.1 + 02 §3.3（AppConfig 字段）：
-- 构造时载入 ConfigManager 当前配置到 UI
-- accept() → ConfigManager.update 持久化
-- reject() → 不改 config
-- reset_to_defaults 按钮 → 重置 UI + 内存对象（不 save）
+- 构造时把 ConfigManager 当前配置 copy 到本地 staging（v0.2.3 P2 M3.3 修复）
+- UI 输入框读 / 写 staging，**不**直接动 live ConfigManager 实例
+- accept() → staging 字段写回 ConfigManager.update 持久化
+- reject() / 窗口关闭 → staging 直接丢弃，live ConfigManager 完全不动
+- reset_to_defaults 按钮 → staging 换成 AppConfig() 默认 + UI 刷新
+  （live cm 不变，磁盘不变；只有用户按 accept 才落盘）
 
 字段映射（已实现 AppConfig 扁平 schema）：
 - output_dir: "same" | "custom"  (QComboBox)
@@ -21,6 +23,8 @@ SSOT 偏离：02 §3.3 规范用嵌套 llm{} + config_version，Sprint 2 推的 
 留 v0.3.0 迁移。
 """
 from __future__ import annotations
+
+import dataclasses
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -59,7 +63,13 @@ class SettingsDialog(QDialog):
         self._build_layout()
         self._wire_signals()
 
-        # 载入当前 config
+        # v0.2.3 P2 audit (M3.3)：构造时把 live config 完整 copy 到本地
+        # staging。所有 UI 读 / 写、改 reset 都只动 staging；只有 accept
+        # 才把 staging 写回 cm。这样 reset 之后 cancel 不会污染 live cm，
+        # 下次打开对话框看到的是真实磁盘值。
+        self._staging = dataclasses.replace(self._cm.get())
+
+        # 载入 staging → UI
         self._load_from_config()
 
     def _build_widgets(self) -> None:
@@ -156,8 +166,13 @@ class SettingsDialog(QDialog):
         self.button_box.rejected.connect(self._on_reject)
 
     def _load_from_config(self) -> None:
-        """从 ConfigManager 读当前配置 → 填到 UI。"""
-        cfg = self._cm.get()
+        """从 staging 读当前配置 → 填到 UI。
+
+        v0.2.3 P2 audit (M3.3)：改为从 self._staging 读，而不是
+        self._cm.get()。这样 UI 反映的是"对话框自己的草稿"，而不是
+        live cm——reset 之后 cancel，下次再开对话框看到的是磁盘原值。
+        """
+        cfg = self._staging
         # Combo 用 setCurrentText 找不到就保持默认
         if cfg.output_dir in self._OUTPUT_DIR_OPTIONS:
             self.output_dir_combo.setCurrentText(cfg.output_dir)
@@ -174,8 +189,13 @@ class SettingsDialog(QDialog):
         self.llm_model_edit.setText(cfg.llm_model)
 
     def _collect_from_ui(self) -> dict:
-        """从 UI 读所有字段 → dict（传给 ConfigManager.update）。"""
-        return {
+        """从 UI 读所有字段 → 写 self._staging → 返回 dict（备用）。
+
+        v0.2.3 P2 audit (M3.3)：改为 collect into staging。调用方
+        （_on_accept）之后用 staging 写回 cm。这样 reset 之后再
+        收集，也只是把 UI 当前值搬到 staging 草稿里，不动 live cm。
+        """
+        values = {
             "output_dir": self.output_dir_combo.currentText(),
             "custom_output_dir": self.custom_output_edit.text(),
             "auto_convert": self.auto_convert_check.isChecked(),
@@ -187,25 +207,42 @@ class SettingsDialog(QDialog):
             "llm_api_key": self.llm_api_key_edit.text(),
             "llm_model": self.llm_model_edit.text(),
         }
+        # 同步到 staging（逐字段 setattr，未知字段由 __dataclass_fields__ 守门）
+        for k, v in values.items():
+            if k in self._staging.__dataclass_fields__:
+                setattr(self._staging, k, v)
+        return values
 
     # -------- slots --------
 
     def _on_accept(self) -> None:
-        """确定 → update 落盘。"""
-        self._cm.update(**self._collect_from_ui())
+        """确定 → 把 UI 收集到 staging，再用 staging 写回 cm 落盘。"""
+        # 先 collect UI → staging，保证 cm.update 收到的是最新用户输入
+        self._collect_from_ui()
+        # v0.2.3 P2 audit (M3.3)：用 staging 的字段写回 cm。
+        # 这样 reset 之后用户改几个字段再 accept，保存的是用户最终看到
+        # 的值（reset 草稿被后续 UI 编辑覆盖），不是"reset 默认 + 用户改的字段"的奇怪混合。
+        self._cm.update(**dataclasses.asdict(self._staging))
         self.accept()  # QDialog.accept() 关闭并返回 Accepted
 
     def _on_reject(self) -> None:
-        """取消 → 不动 config。"""
+        """取消 → 不动 config，staging 直接丢弃。"""
+        # v0.2.3 P2 audit (M3.3)：staging 是对话框的本地草稿，关闭 / 取消
+        # 时 Python 直接 GC 掉就行；self._cm 一次都不碰，磁盘更不会动。
         self.reject()
 
     def _on_reset_defaults(self) -> None:
-        """恢复默认 → UI 重置 + 内存对象 reset（不 save 磁盘）。"""
+        """恢复默认 → 把 staging 换成 AppConfig() 默认 + UI 刷新。
+
+        v0.2.3 P2 audit (M3.3)：原实现直接 setattr(self._cm.get(), ...)
+        改 live cm。如果用户接着点取消，live cm 已经被污染，下次打开
+        对话框看到的字段是"部分 reset"值——典型 in-memory cancel-not-cancel bug。
+
+        新实现：staging = AppConfig()，再 _load_from_config 刷新 UI。
+        live cm 一行都不碰；只有用户再点 accept 才会把"默认值"（或
+        用户接着编辑过的值）写回。
+        """
         from src.core.config import AppConfig
-        default = AppConfig()
-        # 内存对象改回默认
-        for k, v in default.__dict__.items():
-            if hasattr(self._cm.get(), k):
-                setattr(self._cm.get(), k, v)
-        # UI 刷新
+        self._staging = AppConfig()
+        # UI 刷新（从 staging 读默认）
         self._load_from_config()

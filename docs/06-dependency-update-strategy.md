@@ -70,8 +70,8 @@ Lei_MD 是 Microsoft MarkItDown 的 GUI 封装。**它不是孤岛**——它依
 | 3 | 跑样本文件转换（PDF/Word/Excel/PPT/HTML 各 1 个） | 半天 |
 | 4 | 检查 `MarkItDown.convert()` 签名是否变化 | 1 小时 |
 | 5 | 改 `pyproject.toml` 上限 + 更新代码 | 1 天 |
-| 6.1 | 如果无 breaking → 开 PR "deps: bump markitdown to 0.2.x"，常规 review |
-| 6.2 | 如果有 breaking → 开 PR "feat!: migrate to markitdown 0.2 API"，**Lei_MD minor bump**（X.Y.0） |
+| 6a | 无 breaking → 开 PR "deps: bump markitdown to 0.2.x" | 半天 |
+| 6b | 有 breaking → 开 PR "feat!: migrate to markitdown 0.2 API" + **Lei_MD minor bump** | 1-2 天 |
 
 ### 3.3 应急处理（markitdown 发严重 bug）
 

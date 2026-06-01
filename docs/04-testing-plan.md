@@ -321,13 +321,15 @@ tests/fixtures/
 
 ## 9. CI 集成
 
-```yaml
-# .github/workflows/ci.yml
-# 每次 push/PR 自动运行：
-# 1. ruff lint
-# 2. pytest + pytest-qt + pytest-cov
-# 3. PyInstaller build
-```
+CI 工作流的**完整 yaml** 见 [03-development-plan.md §Task 0.2 (L127-185)](03-development-plan.md)：
+- `test` job：windows-latest × Python 3.10/3.11/3.12/3.13 矩阵 + `pytest tests/ -v --cov=src/`
+- `lint` job：ubuntu-latest + `ruff check src/ tests/`
+- `build` job：windows-latest + `python scripts/build.py`（PyInstaller 干跑，验证打包可成功；**不**上传 artifact）
+
+本节仅列出 CI 触发策略与失败处理：
+- **触发条件**：`push` 到 `main` + 所有 PR
+- **必须通过**：`test` + `lint` + `build` 三件套
+- **失败处理**：PR 不可合并；main push 触发自动 revert（手动确认是否保留）
 
 ## 10. 缺陷管理
 

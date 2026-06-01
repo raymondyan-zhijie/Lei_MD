@@ -116,9 +116,11 @@ Lei_MD/
 │       └── assets.qrc          # Qt 资源文件
 ├── tests/
 │   ├── __init__.py
+│   ├── conftest.py            # pytest 全局 fixture（qapp offscreen 等）
 │   ├── test_converter.py
 │   ├── test_batch_worker.py
 │   ├── test_config.py
+│   ├── test_history.py        # SQLite 并发测试（WAL + Signal）
 │   ├── test_ui/                # UI 自动化测试
 │   └── fixtures/               # 测试用样本文件
 ├── scripts/

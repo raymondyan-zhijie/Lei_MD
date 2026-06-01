@@ -94,15 +94,23 @@ class HistoryManager(QObject):
 
     def __init__(self, max_entries: int = 50, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        # v0.2.2 P2 hotfix (M3.2): _conn 必须先初始化为 None，
+        # 这样 _open_and_init_db() 在 try/except 路径中途失败时，
+        # 公共方法 (_on_add / list / _trim / close) 的 None 守卫可命中，
+        # 不会 AttributeError 崩溃整个 UI。
+        self._conn: sqlite3.Connection | None = None
         db_dir = data_dir()
         db_dir.mkdir(parents=True, exist_ok=True)
         self._max = max_entries
 
         # 初始化 DB（含损坏恢复）
-        self._open_and_init_db()
-
-        # Signal → 主线程槽
-        self.add_requested.connect(self._on_add)
+        # try/finally 保护：即使 _open_and_init_db 抛异常，
+        # __init__ 也能完成，self._conn 保持为 None。
+        try:
+            self._open_and_init_db()
+        finally:
+            # Signal → 主线程槽
+            self.add_requested.connect(self._on_add)
 
     def _assert_main_thread(self) -> None:
         """v0.2.2 hotfix（H6）：强制 contract —— 公共方法只在主线程调。
@@ -137,10 +145,19 @@ class HistoryManager(QObject):
             if result is None or (result and result[0] != "ok"):
                 # 逻辑损坏：备份 + 重建
                 self._conn.close()
+                self._conn = None  # v0.2.2 P2 (M3.2): 显式重置让 _backup_and_recreate 接管
                 self._backup_and_recreate()
                 return
         except sqlite3.DatabaseError:
             # 物理损坏（PRAGMA 都进不去）：备份 + 重建
+            # v0.2.2 P2 hotfix (M3.1): sqlite3.connect() 成功但 PRAGMA 失败时，
+            # _conn 已创建但没被 close，会泄漏到 GC。先关再重建。
+            if hasattr(self, "_conn") and self._conn is not None:
+                try:
+                    self._conn.close()
+                except sqlite3.Error:
+                    pass
+                self._conn = None
             self._backup_and_recreate()
             return
 
@@ -197,6 +214,10 @@ class HistoryManager(QObject):
     def _on_add(self, payload: dict[str, Any]) -> None:
         """实际写入槽。永远在主线程执行。"""
         self._assert_main_thread()
+        # v0.2.2 P2 hotfix (M3.2): _conn 初始化失败时静默跳过，
+        # 避免 UI 在用户首次交互时 AttributeError 崩溃。
+        if self._conn is None:
+            return
         self._conn.execute(
             "INSERT INTO history "
             "(source_path, source_format, markdown_length, duration_ms, success, error_msg) "
@@ -216,6 +237,10 @@ class HistoryManager(QObject):
     def list(self, limit: int = 20) -> list[HistoryEntry]:
         """读取。WAL 模式下读不阻塞写，只在主线程调用所以无需额外保护。"""
         self._assert_main_thread()
+        # v0.2.2 P2 hotfix (M3.2): _conn 未初始化时返回空列表，
+        # 让 UI 显示空状态而不是抛 AttributeError。
+        if self._conn is None:
+            return []
         rows = self._conn.execute(
             "SELECT id, source_path, source_format, markdown_length, "
             "duration_ms, success, error_msg, created_at "
@@ -227,6 +252,9 @@ class HistoryManager(QObject):
     def _trim(self) -> None:
         """保留最新 max_entries 条，删除更旧的。"""
         self._assert_main_thread()
+        # v0.2.2 P2 hotfix (M3.2): _conn 未初始化时跳过 trim。
+        if self._conn is None:
+            return
         self._conn.execute(
             "DELETE FROM history WHERE id NOT IN ("
             "  SELECT id FROM history ORDER BY id DESC LIMIT ?"
@@ -238,6 +266,9 @@ class HistoryManager(QObject):
     def close(self) -> None:
         """应用退出时调用。WAL checkpoint + 关闭连接。"""
         self._assert_main_thread()
+        # v0.2.2 P2 hotfix (M3.2): _conn 未初始化时不需要 close。
+        if self._conn is None:
+            return
         try:
             self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         except sqlite3.Error:

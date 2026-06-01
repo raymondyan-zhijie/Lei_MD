@@ -1,0 +1,61 @@
+__pycache__/
+*.pyc
+*.pyo
+*.py[cod]
+__pycache__
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# PyInstaller
+*.spec
+*.exe
+*.msi
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Project-specific
+.history/
+*.db
+*.log
+config.json
+.env
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+benchmark/

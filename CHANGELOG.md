@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-02
+
+跨 Sprint 整体审计 + P2/P3 hotfix + 文档清理后的整合 release。**157/157 测试绿灯**（v0.2.2 的 97 + v0.2.3-v0.2.7 新增 60）。
+
+### Added
+
+- 6 维度审计（安全/并发/错误处理/架构 SSOT/测试覆盖）+ 全量自修
+- P0/P1/P2/P3 共 23 个 Medium + 6 个 Low 全部修复并加回归测试
+- `test_v027_p0_regression.py`（5）+ `test_v027_p1_regression.py`（8）+ `test_p3_coverage_gaps.py`（3）
+
+### Fixed
+
+- **M1.2** BatchWorker `_cancelled` 改 `threading.Event` 保证跨线程内存可见
+- **M1.3** BatchWorker 加 IDLE/RUNNING/CANCELLED/FINISHED 状态机防二次 start/cancel
+- **M1.5** cancel finalize 与 _on_item_done 互斥（`_finalize_emitted` 标志 + mutex）
+- **M3.1** HistoryManager 外层 except close 失败连接
+- **M3.2** HistoryManager 公共方法 None 守卫（`_conn = None` 初始化）
+- **M3.7** `MarkItDownConverter.convert` 拒绝目录/设备文件
+- **M3.8** MarkItDown 线程隔离：`clone_for_thread()` 每 runnable 独立引擎
+- **M3.3** SettingsDialog Reset 不再改 live config（staging copy）
+- **M3.4** BatchWorker `_dispatched.clear()` finalize 时清理
+- **M3.5** `_start_batch` 运行中守卫：先 cancel 旧 batch 再启新
+- **M3.6** `HistoryPanel.refresh` try/except `sqlite3.Error` → 不崩
+- **M4.1** MainWindow `closeEvent` 5 步关停：cancel → wait → waitForDone → processEvents → `history.close()` → accept
+- **M4.2** closeEvent 清 `_active_batch` 引用
+- **M5.3** `os.path.getsize` 包 try/except OSError → 准确错误码 E_FILE_001
+- **M5.4** 8 处 silent exception swallow 加 `log.warning`
+- **M6.2** ConfigManager 拒绝非 dict JSON root
+- **M6.3** `AppConfig.__post_init__` 字段类型 + 范围校验
+- **M6.4** `_backup_and_reset` 三级 fallback：`os.replace` → `shutil.move` → `unlink`
+- **L1** i18n locale 白名单（"system"/"en"/"zh_CN"/"en_US"）
+- **L2** DropArea `rglob` 改 `os.walk` + 限深 10 + 限文件 2000
+- **L3** PreviewPanel `setOpenLinks(False)` + `_safe_set_source` 拦截 file://
+- **L4** `ConversionError.__cause__` 链路可见
+- **closeEvent 调 `HistoryManager.close()`**（v0.2.6 复审 #1：之前从未调用，每次退出 WAL 泄漏）
+- **i18n en 加白名单**（v0.2.6 复审 #3：英文用户启动不再 spam warning）
+
+### Changed
+
+- `BatchWorker._ConvertRunnable.run()` 兼容 callable 顶层函数（测试 stub 回归）
+- `closeEvent` 顺序：先 drain queued signals (`processEvents`) 再 `history.close()` 避免 ProgrammingError
+
+### Cleanup
+
+- 源文件 docstring/注释：删除所有 `v0.X.Y`/`Sprint N`/`Task X.Y`/`M[N.M]`/`H[N]`/`L[N]`/`P[N]`/`SSOT[：]` 引用
+- 保留所有"为什么这样做"的实质内容
+- 净删 67 行版本元信息
+
 ## [0.2.2] - 2026-06-01
 
 Sprint 3 跨 Sprint 整体审计后的 P1 hotfix。**97/97 测试绿灯**（v0.2.1 的 92 + 新增 5 回归测试）。

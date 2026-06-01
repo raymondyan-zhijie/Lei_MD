@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-01
+
+Sprint 3 跨 Sprint 整体审计后的 P1 hotfix。**97/97 测试绿灯**（v0.2.1 的 92 + 新增 5 回归测试）。
+
+### Fixed
+
+- **H1** `ConfigManager.save()` 写完不收紧权限 → LLM API key 同机可读 (`src/core/config.py:122-145`)
+  - 修复：`save()` + 备份复位后都 `os.chmod(0o600)`；Windows/FAT32/只读盘容错
+  - 影响：POSIX 系统上 config.json 现在仅当前用户可读写（多用户机器/备份工具/恶意软件读不到 key）
+  - 长期：v0.3+ 计划用 `keyring` 替换（Windows Credential Manager / macOS Keychain / Secret Service）
+- **H5** `BatchWorker._done_count += 1` 丢更新 + cancel/自然完成 finished 双发 (`src/core/batch_worker.py:160-200`)
+  - 修复：增量在 QMutex 锁内，新增 `_finalize_emitted` 标志使 `finished` 单发（cancel finalize 与 _on_item_done 互斥）
+  - 影响：批量转换中途取消 + 最后一个任务完成并发时 finished 不再发 2 次
+- **H6** `HistoryManager.check_same_thread=False` 仅靠注释保证主线程唯一 (`src/core/history.py:106-120, 198-242`)
+  - 修复：新增 `_assert_main_thread()`，在 `_on_add` / `list` / `_trim` / `close` 入口 assert
+  - 影响：从 worker 线程误调任何公共方法立即 `RuntimeError`（之前会导致 sqlite3 死锁/段错误）
+  - QCoreApplication 未启动时（CLI/测试）跳过
+- **H9** i18n 字符串与代码不一致：`zh_CN.json` 写"200MB"但 `errors.py:60` 是"500MB" (`src/resources/locales/zh_CN.json:58`)
+  - 修复：i18n 改为"500MB"
+  - 影响：用户看到的中文错误信息与实际限制一致
+
+### Added
+
+- `tests/test_v022_hotfix.py` — 5 个回归测试覆盖 H1/H5/H6/H9
+
 ## [0.2.1] - 2026-06-01
 
 Sprint 3 跨 Sprint 整体审计后的 P0 安全/正确性 hotfix。**92/92 测试绿灯**（v0.2.0 的 88 + 新增 4 回归测试）。

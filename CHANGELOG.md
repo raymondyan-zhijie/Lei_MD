@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-01
+
+Sprint 3 跨 Sprint 整体审计后的 P0 安全/正确性 hotfix。**92/92 测试绿灯**（v0.2.0 的 88 + 新增 4 回归测试）。
+
+### Fixed
+
+- **H2** 批量模式下取消按钮是 silent no-op (`src/ui/main_window.py:197-202`)
+  - 修复：`_on_cancel_clicked` 先检查 `_active_batch`，再 fallback 到 `_active_worker`；`__init__` 声明 `self._active_batch = None`
+  - 影响：用户在批量转换中途点"取消"现在能真停，旧行为是 UI 撒了谎
+- **H4** 单文件 worker 在 `cancel()` 之后仍 `emit(finished_with_md)` (`src/core/worker.py:82-89`)
+  - 修复：在 `emit(md)` 前再 check 一次 `self._cancel_event.is_set()`，被取消则不 emit（job_done 仍发，error_msg = "E_SYS_001"）
+  - 影响：UI 不再出现"已取消"状态但 preview 已渲染满的矛盾
+- **H3** `ConfigManager` 拒收 UTF-8 BOM (`src/core/config.py:88`)
+  - 修复：encoding 从 `"utf-8"` 改为 `"utf-8-sig"`，自动剥离 BOM
+  - 影响：Windows 记事本默认存 BOM 的 config.json 现在能正常加载，不再被误判损坏而 reset
+
+### Added
+
+- `tests/test_v021_hotfix.py` — 4 个回归测试覆盖 H2/H3/H4
+
 ## [0.2.0] - 2026-06-01
 
 Sprint 3 完成（Task 2.1 ~ 2.6 + MainWindow 集成）。**88/88 测试绿灯**（v0.2.0-rc1 的 58 + 新增 30）。

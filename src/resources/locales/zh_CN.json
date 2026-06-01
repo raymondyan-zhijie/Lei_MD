@@ -55,7 +55,7 @@
   "dialog.open_folder": "选择文件夹",
   "error.E_FILE_NOT_FOUND": "文件不存在",
   "error.E_FILE_PERMISSION": "没有读取权限",
-  "error.E_FILE_TOO_LARGE": "文件超过 200MB 限制",
+  "error.E_FILE_TOO_LARGE": "文件超过 500MB 限制",
   "error.E_CONVERT_TIMEOUT": "转换超时",
   "error.E_CONVERT_UNSUPPORTED": "不支持的文件格式",
   "error.E_CONVERT_FAILED": "转换失败",

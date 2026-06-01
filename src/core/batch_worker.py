@@ -139,15 +139,23 @@ class BatchWorker(QObject):
         self._cancelled = True
         for t in self._dispatched:
             t.cancel()
+        # 标记 finalize 一次完成，避免与 _on_item_done 双重 finished emit
+        self._finalize_emitted = getattr(self, "_finalize_emitted", False)
+        already_finalized = self._finalize_emitted
+        if not already_finalized:
+            self._done_count = self._total
         self._mutex.unlock()
         # 把剩余未 dispatch 的算作"已 done"（按 cancelled），让 finished 触发
         # 在主线程用 QTimer.singleShot(0) 避免重入
         from PySide6.QtCore import QTimer
         def _finalize():
-            if self._done_count < self._total:
-                self._done_count = self._total
-                self.progress.emit(self._done_count, self._total)
-                self.finished.emit()
+            if getattr(self, "_finalize_emitted", False):
+                return
+            self._mutex.lock()
+            self._finalize_emitted = True
+            self._mutex.unlock()
+            self.progress.emit(self._done_count, self._total)
+            self.finished.emit()
         QTimer.singleShot(0, _finalize)
 
     @Slot(str, str)
@@ -160,10 +168,27 @@ class BatchWorker(QObject):
 
     @Slot()
     def _on_item_done(self) -> None:
-        self._done_count += 1
-        self.progress.emit(self._done_count, self._total)
+        # v0.2.2 hotfix（H5）：done_count 增量 + finished 判定必须原子化
+        # Qt queued-slot 让本槽在主线程跑（AutoConnection → Queued），
+        # 但 cancel() 可能在主线程并发，锁是显式契约。
+        self._mutex.lock()
+        if getattr(self, "_finalize_emitted", False):
+            # cancel 路径已经 finalize 过，不再重复
+            self._mutex.unlock()
+            return
+        if self._done_count < self._total:
+            self._done_count += 1
+            self.progress.emit(self._done_count, self._total)
+        reached_total = self._done_count >= self._total
+        self._mutex.unlock()
         # 派发下一个（如果还有且未取消）
         self._dispatch_next()
-        if self._done_count >= self._total:
+        if reached_total:
+            self._mutex.lock()
+            if getattr(self, "_finalize_emitted", False):
+                self._mutex.unlock()
+                return
+            self._finalize_emitted = True
+            self._mutex.unlock()
             # 等所有 runnable 真正结束再发 finished（用 QTimer.singleShot 0 让事件循环跑一拍）
             QTimer.singleShot(0, self.finished.emit)

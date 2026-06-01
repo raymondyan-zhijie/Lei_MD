@@ -116,16 +116,31 @@ class ConfigManager:
                 json.dumps(asdict(AppConfig()), indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
+            # v0.2.2 hotfix（H1）：备份复位后同样收紧权限
+            self._restrict_permissions(cfg_file)
         except OSError:
             pass  # 只读盘？让上层 get() 返回内存默认即可
 
     def save(self) -> None:
         """写盘。"""
         config_dir().mkdir(parents=True, exist_ok=True)
-        config_file().write_text(
+        cfg = config_file()
+        cfg.write_text(
             json.dumps(asdict(self._config), indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
+        # v0.2.2 hotfix（H1）：写完收紧权限为仅当前用户可读写，
+        # 防止 LLM API key 被同机其他用户/备份工具读取。
+        # Windows 上 os.chmod 是只读位，0o600 会被映射为 ACL 拒绝；POSIX 上是真正的 0o600。
+        self._restrict_permissions(cfg)
+
+    @staticmethod
+    def _restrict_permissions(path: Path) -> None:
+        """设置文件权限为 0o600（仅当前用户可读写）。"""
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass  # Windows FS / FAT32 / 只读盘：忽略，靠后续 keyring 方案解决
 
     def get(self) -> AppConfig:
         """当前配置。返回引用（不是 copy），调用方应只读或走 update()。"""

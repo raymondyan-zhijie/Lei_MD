@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QCoreApplication, QObject, QThread, Signal, Slot
 
 
 def data_dir() -> Path:
@@ -104,6 +104,23 @@ class HistoryManager(QObject):
         # Signal → 主线程槽
         self.add_requested.connect(self._on_add)
 
+    def _assert_main_thread(self) -> None:
+        """v0.2.2 hotfix（H6）：强制 contract —— 公共方法只在主线程调。
+
+        check_same_thread=False 仅靠注释保证，运行时一旦从 worker 线程误调
+        会导致 sqlite3 锁死/段错误。QCoreApplication 未启动时（CLI/测试初始化）
+        跳过该断言。
+        """
+        app = QCoreApplication.instance()
+        if app is None:
+            return
+        if QThread.currentThread() is not app.thread():
+            raise RuntimeError(
+                "HistoryManager must be called from the main thread "
+                "(uses check_same_thread=False sqlite connection; "
+                "see docs/02-architecture.md §3.3.1)."
+            )
+
     def _open_and_init_db(self) -> None:
         """打开 + PRAGMA + integrity_check + CREATE TABLE。损坏则备份重建。"""
         db_path = history_db_path()
@@ -179,6 +196,7 @@ class HistoryManager(QObject):
     @Slot(dict)
     def _on_add(self, payload: dict[str, Any]) -> None:
         """实际写入槽。永远在主线程执行。"""
+        self._assert_main_thread()
         self._conn.execute(
             "INSERT INTO history "
             "(source_path, source_format, markdown_length, duration_ms, success, error_msg) "
@@ -197,6 +215,7 @@ class HistoryManager(QObject):
 
     def list(self, limit: int = 20) -> list[HistoryEntry]:
         """读取。WAL 模式下读不阻塞写，只在主线程调用所以无需额外保护。"""
+        self._assert_main_thread()
         rows = self._conn.execute(
             "SELECT id, source_path, source_format, markdown_length, "
             "duration_ms, success, error_msg, created_at "
@@ -207,6 +226,7 @@ class HistoryManager(QObject):
 
     def _trim(self) -> None:
         """保留最新 max_entries 条，删除更旧的。"""
+        self._assert_main_thread()
         self._conn.execute(
             "DELETE FROM history WHERE id NOT IN ("
             "  SELECT id FROM history ORDER BY id DESC LIMIT ?"
@@ -217,6 +237,7 @@ class HistoryManager(QObject):
 
     def close(self) -> None:
         """应用退出时调用。WAL checkpoint + 关闭连接。"""
+        self._assert_main_thread()
         try:
             self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         except sqlite3.Error:

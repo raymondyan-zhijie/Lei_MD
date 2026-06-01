@@ -96,8 +96,27 @@ class HistoryPanel(QWidget):
     # -------- 公开 API --------
 
     def refresh(self) -> None:
-        """从 HistoryManager 重新拉数据。"""
-        self._all_entries = self._hm.list(limit=100)
+        """从 HistoryManager 重新拉数据。
+
+        v0.2.7 P1 审计（v0.2.6 复审 #4）：DB 锁 / 损坏下 ``self._hm.list()`` 会
+        抛 ``sqlite3.OperationalError``（如 "database is locked" / "file is not
+        a database"），冒泡到 Qt event loop 会让整个 UI 崩。包 ``try/except
+        sqlite3.Error`` —— 记 ``_log.warning`` + 把 ``_all_entries`` 置空，
+        用户看到的只是"历史暂时无法加载"而不是整个面板 / 主窗口消失。
+        """
+        # v0.2.7 P1：sqlite3 import 放在 try 块内，避免污染顶层命名空间
+        # （文件已 import logging / Path，sqlite3 是新依赖；放 try 内只
+        # 实际用到的错误类路径走 import，正常路径零开销）
+        try:
+            import sqlite3
+            self._all_entries = self._hm.list(limit=100)
+        except sqlite3.Error as e:
+            _log.warning(
+                "HistoryPanel.refresh: HistoryManager.list() raised %s — %s. "
+                "Falling back to empty list to keep UI alive.",
+                type(e).__name__, e, exc_info=True,
+            )
+            self._all_entries = []
         self._apply_filter()
 
     def row_count(self) -> int:

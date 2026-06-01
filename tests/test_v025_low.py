@@ -21,11 +21,15 @@ import pytest
 # ============================================================
 
 def test_i18n_valid_locales_whitelist_constant():
-    """L1: VALID_LOCALES 必须存在，且恰好 = {system, zh_CN, en_US}。"""
+    """L1: VALID_LOCALES 必须存在，且包含 {system, en, zh_CN, en_US}。
+
+    v0.2.7 P0 增补 "en"：让英文用户（DEFAULT_LOCALE）启动时不打 warning，
+    同时保持白名单收紧（攻击者控制的 locale 仍 fallback）。
+    """
     from src.ui import i18n
 
     assert hasattr(i18n, "VALID_LOCALES"), "L1: 缺少模块常量 VALID_LOCALES"
-    assert i18n.VALID_LOCALES == frozenset({"system", "zh_CN", "en_US"})
+    assert i18n.VALID_LOCALES == frozenset({"system", "en", "zh_CN", "en_US"})
 
 
 def test_i18n_set_locale_rejects_unknown_locale(monkeypatch):
@@ -55,11 +59,11 @@ def test_i18n_set_locale_rejects_plain_garbage(monkeypatch):
 
 
 def test_i18n_set_locale_accepts_each_whitelisted_value():
-    """L1: VALID_LOCALES 里的三个值都应当原样接受。"""
+    """L1: VALID_LOCALES 里的四个值都应当原样接受（含 v0.2.7 P0 新增的 "en"）。"""
     from src.ui import i18n
     from src.ui.i18n import set_locale
 
-    for loc in ("system", "zh_CN", "en_US"):
+    for loc in ("system", "en", "zh_CN", "en_US"):
         set_locale(loc, translations={"greet": f"hello-{loc}"})
         assert i18n._default.locale == loc
         assert i18n.tr("greet") == f"hello-{loc}"

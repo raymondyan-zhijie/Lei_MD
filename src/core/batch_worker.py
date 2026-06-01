@@ -213,6 +213,12 @@ class BatchWorker(QObject):
                 return
             self._mutex.lock()
             self._finalize_emitted = True
+            # v0.2.7 P1 审计（v0.2.6 复审 #5）：cancel 路径也释放
+            # _dispatched 强引用。cancel 后已 dispatch 的 _ConvertRunnable
+            # 仍会跑完（协作式），但 cancel() 已经 set 了 threading.Event，
+            # 它们的 run() 会 early return。等所有 runnable 真正回收后，
+            # 清 _dispatched 让 GC 回收 _Signals QObject。
+            self._dispatched.clear()
             self._mutex.unlock()
             self.progress.emit(self._done_count, self._total)
             self.finished.emit()
@@ -254,6 +260,11 @@ class BatchWorker(QObject):
             # 所以这里只在原状态是 RUNNING 时才覆写为 FINISHED。
             if self._state == STATE_RUNNING:
                 self._state = STATE_FINISHED
+            # v0.2.7 P1 审计（v0.2.6 复审 #5）：释放 _dispatched 持有的
+            # _ConvertRunnable 强引用。finalize 检查通过后所有 runnable
+            # 都已回收（pool 已 waitForDone + runnable.run() 退出），清
+            # 列表让 GC 回收 _ConvertRunnable + 内嵌的 _Signals QObject。
+            self._dispatched.clear()
             self._mutex.unlock()
             # 等所有 runnable 真正结束再发 finished（用 QTimer.singleShot 0 让事件循环跑一拍）
             QTimer.singleShot(0, self.finished.emit)

@@ -3,6 +3,8 @@
 > 🪟 **Windows 桌面版文件转 Markdown 工具** — 基于 [Microsoft MarkItDown](https://github.com/microsoft/markitdown) (⭐ 136,328)
 > **大而全 · 完全离线 · 传统安装程序**
 
+> 🌐 **Language**: **中文** | [English](README.en.md)
+
 拖拽文件 → 自动转换 → 实时预览 → 一键导出。**让非技术用户也能享受 MarkItDown 的强大能力。**
 
 ## ✨ 功能

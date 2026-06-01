@@ -1,5 +1,7 @@
 # Lei_MD 架构设计文档
 
+> 🌐 **Language**: **中文** | [English](02-architecture.en.md)
+
 > **品牌：** leimengde  
 > **版本：** 规划期快照（实际实施见 [CHANGELOG](../CHANGELOG.md)） | **日期：** 2026-06-01  
 >  

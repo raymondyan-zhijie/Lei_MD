@@ -1,5 +1,7 @@
 # Lei_MD 开发计划
 
+> 🌐 **Language**: **中文** | [English](03-development-plan.en.md)
+
 > **品牌：** leimengde  
 > **For Hermes:** Use `subagent-driven-development` skill to implement this plan task-by-task.  
 >  

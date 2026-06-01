@@ -1,5 +1,7 @@
 # Lei_MD 依赖更新策略
 
+> 🌐 **Language**: **中文** | [English](06-dependency-update-strategy.en.md)
+
 > **品牌：** leimengde  
 > **版本：** 规划期快照（实际依赖见 [pyproject.toml](../pyproject.toml)） | **日期：** 2026-06-01  
 > **范围：** 首次发布（v1.0.0）之后的版本演进与上游依赖管理  

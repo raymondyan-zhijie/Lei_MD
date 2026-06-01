@@ -1,5 +1,7 @@
 # Lei_MD 发布与维护计划
 
+> 🌐 **Language**: **中文** | [English](05-release-plan.en.md)
+
 > **品牌：** leimengde  
 > **版本：** 规划期快照（实际发布见 [CHANGELOG](../CHANGELOG.md)） | **日期：** 2026-06-01  
 >  

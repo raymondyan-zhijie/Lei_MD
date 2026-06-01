@@ -1,5 +1,7 @@
 # Lei_MD 需求文档
 
+> 🌐 **Language**: **中文** | [English](01-requirements.en.md)
+
 > **项目名称：** Lei_MD  
 > **品牌：** leimengde  
 > **版本：** 规划期快照（实际实施见 [CHANGELOG](../CHANGELOG.md)）  

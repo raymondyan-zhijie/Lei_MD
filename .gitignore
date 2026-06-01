@@ -51,6 +51,8 @@ Desktop.ini
 *.log
 config.json
 .env
+.env.*
+!.env.example
 
 # Test
 .pytest_cache/

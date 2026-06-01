@@ -47,8 +47,14 @@ Issues = "https://github.com/raymondyan-zhijie/Lei_MD/issues"
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+# 把 src/ 注册为可导入的包（与 [project] name=lei-md 区分：
+# name 是 pip 包名（lei-md），src 是 Python 导入名（src.*））
+packages = ["src", "src.ui", "src.core"]
+
+[tool.setuptools.package-data]
+# 资源文件（locale json、icon 等）随包分发
+"src.resources" = ["*.qrc", "locales/*.json", "icons/*"]
 
 [tool.ruff]
 line-length = 100

@@ -61,6 +61,18 @@ class FileList(QListWidget):
         self._paths.clear()
         super().clear()
 
+    def all_paths(self) -> list[str]:
+        """返回所有加入过的 abs path 列表（去重保序）。"""
+        out: list[str] = []
+        seen: set[str] = set()
+        for i in range(self.count()):
+            item = self.item(i)
+            p = item.data(Qt.ItemDataRole.UserRole)
+            if p and p not in seen:
+                seen.add(p)
+                out.append(p)
+        return out
+
     def selected_paths(self) -> list[str]:
         """当前选中行对应的 abs path 列表。"""
         out: list[str] = []

@@ -58,8 +58,8 @@ class _ConvertRunnable(QRunnable):
         # 之前 self._cancelled: bool 在 worker 线程 run() 和主线程 cancel()
         # 之间无 happens-before 关系，bool 写在 Py3 上不是原子的。
         # Event.set()/is_set() 是线程安全的，set 后所有线程的 is_set() 立刻返回 True。
+        # 默认 unset：只有 cancel() 显式 set() 后 run() 才提前 return。
         self._cancel_event = threading.Event()
-
     def cancel(self) -> None:
         self._cancel_event.set()
 
@@ -68,7 +68,7 @@ class _ConvertRunnable(QRunnable):
             # cancel 在 start 之前被设
             return
         # v0.2.4 P2 审计 M3.8：每个 runnable 持有独立 MarkItDown 引擎。
-        # 兼容没有 clone_for_thread 的替身 converter（_StubConverter / 测试 mock）——
+        # 兼容没有 clone_for_thread 的替身 converter（_StubConverter / 测试 mock / 纯函数）——
         # 这种情况下退化使用原 converter，与 v0.2.3 行为一致（单线程用同一个实例）。
         if self._converter is None:
             clone = getattr(self._source_converter, "clone_for_thread", None)
@@ -76,8 +76,16 @@ class _ConvertRunnable(QRunnable):
                 self._converter = clone()
             else:
                 self._converter = self._source_converter
+        # 兼容测试 mock：converter 可以是 (a) instance with .convert() 方法
+        # (b) callable 顶层函数。MarkItDownConverter 走 (a)；
+        # 测试 stub/lambda 走 (b)。旧测试套用 lambda 作 converter，
+        # 不能要求它们改成有 .convert() 方法的对象。
+        converter_obj = self._converter
         try:
-            md = self._converter.convert(self._file_path)
+            if hasattr(converter_obj, "convert") and callable(converter_obj.convert):
+                md = converter_obj.convert(self._file_path)
+            else:
+                md = converter_obj(self._file_path)
             self.signals.item_finished.emit(self._file_path, md)
         except Exception as e:
             from src.core.errors import ConversionError, ErrorCode

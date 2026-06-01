@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0-rc1] - 2026-06-01
+
+Sprint 2 完成（Task 1.8 + Task 1.9）。**58/58 测试绿灯**（v0.1.1 的 44 + 新增 14）。
+
+### Added
+
+- **配置文件管理** (`src/core/config.py`, Task 1.8)
+  - `AppConfig` dataclass：output_dir / custom_output_dir / auto_convert / max_history=50 / language="system" / theme="system" / batch_concurrency=4 / llm_api_base / llm_api_key / llm_model="gpt-4o"
+  - `ConfigManager` 跨平台：Windows %APPDATA%\\Lei_MD\\config.json，Linux/macOS ~/.config/Lei_MD/config.json
+  - 损坏自动备份 .json.bak + 复位（E_INTERNAL_003）
+  - 未知字段静默忽略（forward-compat）
+  - `update(**kwargs)` 即写盘
+- **历史记录** (`src/core/history.py`, Task 1.9)
+  - SQLite 持久化，schema 含 source_path / source_format / markdown_length / duration_ms / success / error_msg / created_at
+  - **WAL + Signal 串行化并发模型**（02 §3.3.1）：PRAGMA journal_mode=WAL + busy_timeout=5000 + synchronous=NORMAL
+  - `request_add()` emit `add_requested(dict)` Signal → 主线程槽 `_on_add` 实际写
+  - 容量 trim：保留 max_entries=50
+  - **崩溃恢复**：启动 PRAGMA integrity_check，损坏 → 备份 .db.bak.<ts> + 重建（E_INTERNAL_002）
+  - `close()` 调 `PRAGMA wal_checkpoint(TRUNCATE)`
+- **Worker 元信息 signal** (`src/core/worker.py`)
+  - 新增 `job_done = Signal(str, str, int, int, bool, str)`：source_path / source_format / md_len / duration_ms / success / error_msg
+  - 通过 `try/finally` 块保证成功/失败/取消三种路径都发
+- **MainWindow 集成** (`src/ui/main_window.py`)
+  - `MainWindow(converter=..., history=...)` 新增 history kwarg（向后兼容）
+  - 转换完成自动写历史
+- **测试 14 个新增**
+  - `tests/test_config.py` 5 个：默认 / 持久化 / 损坏备份 / 未知字段忽略 / 目录创建
+  - `tests/test_history.py` 6 个：增删查 / 排序 / trim / 失败 / 跨线程 / 损坏恢复
+  - `tests/test_main_window_history.py` 3 个：成功记录 / 失败记录 / 未注入 graceful
+
+### Changed
+
+- **API**：`MainWindow.__init__()` 新增可选 kwarg `history`（默认 None，v0.1.x 调用方式不破）
+- **API**：`ConversionWorker.job_done` 新 signal（向后兼容，旧 signal 不变）
+- 实现：`_config_dir()` / `data_dir()` 改为每次调用重新读 env（测试 monkeypatch 友好）
+
 ## [0.1.1] - 2026-06-01
 
 Worker 异步转换接入 MainWindow。**44/44 测试绿灯**（v0.1.0 的 36 + 新增 8）。

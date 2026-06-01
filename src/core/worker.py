@@ -29,9 +29,13 @@ class ConversionWorker(QThread):
     """
 
     # signal 声明
-    progress = Signal(int)          # 0~100
-    finished_with_md = Signal(str)  # 成功：返回 markdown 文本
-    error = Signal(object)          # 失败：返回 ConversionError
+    progress = Signal(int)              # 0~100
+    finished_with_md = Signal(str)      # 成功：返回 markdown 文本
+    error = Signal(object)              # 失败：返回 ConversionError
+    # v0.2.0 集成：转换完成时携带元信息（路径/格式/长度/耗时/成功/错误）
+    # HistoryManager 通过这个 signal 异步写 SQLite
+    job_done = Signal(str, str, int, int, bool, str)
+    # args: source_path, source_format, markdown_length, duration_ms, success, error_msg
 
     def __init__(self, converter: Any, file_path: str, parent=None):
         super().__init__(parent)
@@ -49,6 +53,16 @@ class ConversionWorker(QThread):
 
     def run(self) -> None:
         """线程主循环。"""
+        import time
+        from pathlib import Path
+        start = time.time()
+        path = Path(self._file_path)
+        source_format = path.suffix.lower() if path.suffix else ""
+        duration_ms = 0
+        success = False
+        error_msg = ""
+        md = ""
+
         try:
             self.progress.emit(0)
 
@@ -60,24 +74,37 @@ class ConversionWorker(QThread):
             if self._cancel_event.is_set():
                 return
 
-            markdown = self._converter.convert(self._file_path)
+            md = self._converter.convert(self._file_path)
 
             if self._cancel_event.is_set():
                 return
 
             self.progress.emit(90)
             self.progress.emit(100)
-            self.finished_with_md.emit(markdown)
+            self.finished_with_md.emit(md)
+            success = True
         except Exception as e:
             # 已是 ConversionError 直接转发；其他异常包装
             from src.core.errors import ConversionError, ErrorCode
             if isinstance(e, ConversionError):
+                error_msg = str(e.code)
                 self.error.emit(e)
             else:
-                self.error.emit(
-                    ConversionError(
-                        ErrorCode.E_INTERNAL_001,
-                        filename=str(self._file_path),
-                        cause=e,
-                    )
+                ce = ConversionError(
+                    ErrorCode.E_INTERNAL_001,
+                    filename=str(self._file_path),
+                    cause=e,
                 )
+                error_msg = str(ce.code)
+                self.error.emit(ce)
+        finally:
+            # 不管成功/失败/cancel 都发 job_done（cancel 也记，但 success=False）
+            duration_ms = int((time.time() - start) * 1000)
+            self.job_done.emit(
+                self._file_path,
+                source_format,
+                len(md),
+                duration_ms,
+                success,
+                error_msg,
+            )

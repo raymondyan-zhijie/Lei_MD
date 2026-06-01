@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.converter import MarkItDownConverter
+from src.core.history import HistoryManager
 from src.core.worker import ConversionWorker
 from src.ui.drop_area import DropArea
 from src.ui.file_list import FileList
@@ -38,13 +39,21 @@ from src.ui.preview_panel import PreviewPanel
 class MainWindow(QMainWindow):
     """Lei_MD 主窗口。"""
 
-    def __init__(self, parent=None, *, converter: object | None = None):
+    def __init__(
+        self,
+        parent=None,
+        *,
+        converter: object | None = None,
+        history: HistoryManager | None = None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("Lei_MD — MarkItDown GUI")
         self.resize(1100, 720)
 
         # 注入 converter（默认真实 markitdown）
         self._converter = converter if converter is not None else MarkItDownConverter()
+        # 注入 history（v0.2.0，默认 None 兼容 v0.1.x）
+        self._history = history
 
         # 三个子组件
         self.drop_area = DropArea()
@@ -115,6 +124,9 @@ class MainWindow(QMainWindow):
         worker.progress.connect(self._on_worker_progress)
         worker.finished_with_md.connect(self._on_worker_finished)
         worker.error.connect(self._on_worker_error)
+        # v0.2.0：job_done 携带元信息 → history.request_add
+        if self._history is not None:
+            worker.job_done.connect(self._on_job_done)
         # 线程结束自动清引用
         worker.finished.connect(lambda: self._cleanup_worker(worker))
         self._active_worker = worker
@@ -136,6 +148,27 @@ class MainWindow(QMainWindow):
         self.status.showMessage("转换失败")
         self.progress_bar.setVisible(False)
         self.cancel_button.setVisible(False)
+
+    def _on_job_done(
+        self,
+        source_path: str,
+        source_format: str,
+        md_len: int,
+        duration_ms: int,
+        success: bool,
+        error_msg: str,
+    ) -> None:
+        """v0.2.0：Worker 完成时携带元信息，转发给 HistoryManager。"""
+        if self._history is None:
+            return
+        self._history.request_add(
+            source_path=source_path,
+            fmt=source_format,
+            md_len=md_len,
+            duration_ms=duration_ms,
+            success=success,
+            error=error_msg,
+        )
 
     def _on_cancel_clicked(self) -> None:
         if self._active_worker is not None:

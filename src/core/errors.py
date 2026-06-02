@@ -113,6 +113,9 @@ class ConversionError(Exception):
     ):
         self.code = code
         self.cause = cause
+        # v0.4.2 P1 C5：保存 format_kwargs 供 get_message() 重新格式化（之前
+        # 只在 __init__ 一次，之后切换语言会拿到未替换的 {filename} 占位符）
+        self._format_kwargs = dict(format_kwargs)
         # 默认用户消息（中文）
         template = ERROR_MESSAGES.get(code, {}).get("zh_CN", str(code))
         if message is None:
@@ -132,7 +135,9 @@ class ConversionError(Exception):
     def get_message(self, lang: str = "zh_CN") -> str:
         """按语言取本地化消息。"""
         template = ERROR_MESSAGES.get(self.code, {}).get(lang, str(self.code))
+        # v0.4.2 P1 C5：用保存的 _format_kwargs（不再用 self.__dict__，
+        # 避免占位符未被替换的 bug）
         try:
-            return template.format(**self.__dict__)
+            return template.format(**self._format_kwargs)
         except (KeyError, IndexError):
             return template

@@ -25,6 +25,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.ui.i18n import tr
+
 _log = logging.getLogger(__name__)
 
 class HistoryPanel(QWidget):
@@ -33,8 +35,18 @@ class HistoryPanel(QWidget):
     # 双击某行 → 通知 MainWindow
     file_selected = Signal(str)
 
-    # 列定义（SSOT）
-    _COLUMNS = ("文件名", "格式", "长度", "耗时(ms)", "状态", "时间", "错误")
+    # 列定义（SSOT 翻译键 — v0.4.2 P1 A3：用 i18n 替代硬编码中文）
+    # 翻译键在运行时通过 tr() 解析；切换语言时只需重新构造面板或
+    # 主动调用 _retranslate_ui()（未来增强）。
+    _COLUMNS: tuple[tuple[str, str], ...] = (
+        ("history.column.filename", "文件名"),
+        ("history.column.format", "格式"),
+        ("history.column.length", "长度"),
+        ("history.column.duration", "耗时(ms)"),
+        ("history.column.status", "状态"),
+        ("history.column.time", "时间"),
+        ("history.column.error", "错误"),
+    )
 
     def __init__(self, history_manager, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -51,17 +63,20 @@ class HistoryPanel(QWidget):
     def _build_widgets(self) -> None:
         # 搜索框
         self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("按文件名搜索…")
+        self.search_edit.setPlaceholderText(tr("history.search.placeholder"))
         self.search_edit.setClearButtonEnabled(True)
 
         # 刷新按钮
         from PySide6.QtWidgets import QPushButton
-        self.refresh_button = QPushButton("刷新")
+        self.refresh_button = QPushButton(tr("history.refresh"))
 
         # 表格
         self.table_widget = QTableWidget()
+        # 列数从 _COLUMNS 元组数读（不再硬编码）
         self.table_widget.setColumnCount(len(self._COLUMNS))
-        self.table_widget.setHorizontalHeaderLabels(self._COLUMNS)
+        # v0.4.2 P1 A3：表头走 tr()，未命中翻译键时落回元组第二项（兼容 en_US）
+        headers = tuple(tr(key) if tr(key) != key else fallback for key, fallback in self._COLUMNS)
+        self.table_widget.setHorizontalHeaderLabels(headers)
         # 不可编辑
         self.table_widget.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         # 单选
@@ -77,7 +92,7 @@ class HistoryPanel(QWidget):
         root = QVBoxLayout(self)
         # 搜索行
         search_row = QHBoxLayout()
-        search_row.addWidget(QLabel("搜索："))
+        search_row.addWidget(QLabel(tr("history.search.label")))
         search_row.addWidget(self.search_edit, 1)
         search_row.addWidget(self.refresh_button)
         root.addLayout(search_row)

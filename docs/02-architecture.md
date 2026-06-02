@@ -97,7 +97,7 @@
 Lei_MD/
 ├── src/
 │   ├── __init__.py
-│   ├── main.py                 # 程序入口
+│   ├── main.py                 # 程序入口（v0.4.2 加 logging.basicConfig）
 │   ├── app.py                  # QApplication 初始化
 │   ├── ui/
 │   │   ├── __init__.py
@@ -107,13 +107,19 @@ Lei_MD/
 │   │   ├── file_list.py        # 文件列表组件
 │   │   ├── settings_dialog.py  # 设置对话框
 │   │   ├── history_panel.py    # 历史记录面板
+│   │   ├── i18n.py             # 国际化（v0.4.0 加）
 │   │   └── styles.py           # QSS 样式表
 │   ├── core/
 │   │   ├── __init__.py
 │   │   ├── converter.py        # 转换引擎封装
-│   │   ├── batch_worker.py     # 批量转换工作线程
-│   │   ├── history.py          # 历史记录管理
-│   │   └── config.py           # 配置管理
+│   │   ├── worker.py           # 单文件转换 QThread（v0.4.2 P1 C1 顶层导入）
+│   │   ├── batch_worker.py     # 批量转换工作线程（v0.4.2 P0 S3 加 wait_finished）
+│   │   ├── history.py          # 历史记录管理（SQLite + WAL）
+│   │   ├── config.py           # 配置管理（v0.4.2 P0 S2 max_history 上限 1000）
+│   │   ├── errors.py           # 错误码体系（ConversionError / ErrorCode）
+│   │   ├── supported.py        # 扩展名 SSOT（v0.4.2 P0 S1 从 drop_area 上提）
+│   │   ├── file_item.py        # 文件项 dataclass（v0.4.2 P1 A1 实现）
+│   │   └── youtube.py          # YouTube 字幕抓取（v0.4.0 Task 2.4）
 │   └── resources/
 │       ├── icons/              # 应用图标
 │       ├── locales/            # 国际化文件 (zh_CN, en_US)
@@ -128,9 +134,10 @@ Lei_MD/
 │   ├── test_ui/                # UI 自动化测试
 │   └── fixtures/               # 测试用样本文件
 ├── scripts/
-│   ├── build.py                # PyInstaller 打包脚本
-│   ├── installer.nsi            # NSIS 安装包脚本
-│   └── bump_version.py         # 版本号管理
+│   └── build-windows.ps1       # v0.4.1 一键 Windows 打包（PowerShell）
+├── installer/
+│   └── installer.nsi           # v0.4.1 NSIS 安装包脚本
+├── Lei_MD.spec                 # v0.4.1 PyInstaller 配置
 ├── docs/
 │   ├── 01-requirements.md      # 需求文档
 │   ├── 02-architecture.md      # 本文件

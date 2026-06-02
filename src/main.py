@@ -13,11 +13,26 @@
 """
 from __future__ import annotations
 
+import logging
+import os
 import sys
 
 from PySide6.QtWidgets import QApplication
 
 from src.app import LeiMDApp
+
+# v0.4.2 P1 C3：基础 logging 配置。GUI 应用默认无 stderr 输出（Qt 拦截），
+# 用户 / 客服反馈"出错了"时常因没 traceback 难以定位。设 WARNING 级把
+# log.warning/error 推到 stderr；DEBUG / INFO 默认不开，CLI 运行可
+# 用 LEI_MD_LOG=DEBUG 或 --debug 打开。
+_LOG_LEVEL = logging.WARNING
+if "--debug" in sys.argv or os.environ.get("LEI_MD_LOG", "").upper() == "DEBUG":
+    _LOG_LEVEL = logging.DEBUG
+logging.basicConfig(
+    level=_LOG_LEVEL,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 
 def main() -> int:

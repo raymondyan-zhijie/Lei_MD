@@ -21,9 +21,13 @@ Terminal signal 语义：
 from __future__ import annotations
 
 import threading
+import time
+from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QThread, Signal
+
+from src.core.errors import ConversionError, ErrorCode  # v0.4.2 P1 C1：顶层导入
 
 
 class ConversionWorker(QThread):
@@ -60,8 +64,6 @@ class ConversionWorker(QThread):
 
     def run(self) -> None:
         """线程主循环。"""
-        import time
-        from pathlib import Path
         start = time.time()
         path = Path(self._file_path)
         source_format = path.suffix.lower() if path.suffix else ""
@@ -96,7 +98,6 @@ class ConversionWorker(QThread):
             success = True
         except Exception as e:
             # 已是 ConversionError 直接转发；其他异常包装
-            from src.core.errors import ConversionError, ErrorCode
             if isinstance(e, ConversionError):
                 error_msg = str(e.code)
                 self.error.emit(e)
@@ -119,3 +120,58 @@ class ConversionWorker(QThread):
                 success,
                 error_msg,
             )
+
+
+class YouTubeFetchWorker(QThread):
+    """v0.4.2 P1 M4：YouTube 字幕抓取异步 Worker（避免阻塞 UI）。
+
+    复用 ConversionWorker 的 cancel / job_done 模式：
+    - cancel() 设 cancel_event（fetch_youtube_transcript 内部不检查，因为
+      yt-dlp 抓取是阻塞调用；cancel 主要用于 UI 防呆——禁用按钮 + 状态栏提示）
+    - finished(markdown) 成功时 emit
+    - error(YouTubeFetchError) 失败时 emit（用户可见）
+    """
+
+    finished = Signal(str)  # 成功：返回 markdown
+    error = Signal(str)    # 失败：返回错误码（"E_CONVERT_001" 等）+ 消息
+
+    def __init__(self, url: str, *, timeout: int = 30, parent=None):
+        super().__init__(parent)
+        self._url = url
+        self._timeout = timeout
+        self._cancel_event = threading.Event()
+
+    def cancel(self) -> None:
+        """请求取消（UI 按钮立即禁用；fetch 本身是阻塞的）。"""
+        self._cancel_event.set()
+
+    def is_cancelled(self) -> bool:
+        return self._cancel_event.is_set()
+
+    def run(self) -> None:
+        """线程主循环。"""
+        from src.core.youtube import (
+            YouTubeFetchError,
+            extract_video_id,
+            fetch_youtube_transcript,
+        )
+
+        if self._cancel_event.is_set():
+            return
+        # 二次校验 URL（避免 UI 在 worker start 之后又改了输入框）
+        if extract_video_id(self._url) is None:
+            self.error.emit("E_CONVERT_005")
+            return
+        try:
+            md = fetch_youtube_transcript(self._url, timeout=self._timeout)
+        except YouTubeFetchError as e:
+            # e.code 是字符串形式的 ErrorCode（"E_CONVERT_001" 等）
+            self.error.emit(e.code)
+            return
+        except Exception:
+            # 兜底：未知异常 → E_INTERNAL_001
+            self.error.emit("E_INTERNAL_001")
+            return
+        if self._cancel_event.is_set():
+            return
+        self.finished.emit(md)

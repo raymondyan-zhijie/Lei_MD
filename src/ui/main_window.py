@@ -20,6 +20,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
+    QHBoxLayout,
+    QLineEdit,
     QMainWindow,
     QProgressBar,
     QPushButton,
@@ -33,10 +35,11 @@ from src.core.batch_worker import BatchWorker
 from src.core.config import ConfigManager
 from src.core.converter import MarkItDownConverter
 from src.core.history import HistoryManager
-from src.core.worker import ConversionWorker
+from src.core.worker import ConversionWorker, YouTubeFetchWorker
 from src.ui.drop_area import DropArea
 from src.ui.file_list import FileList
 from src.ui.i18n import set_locale
+from src.ui.i18n import tr as _tr
 from src.ui.preview_panel import PreviewPanel
 from src.ui.styles import apply_theme
 
@@ -101,6 +104,16 @@ class MainWindow(QMainWindow):
         left_wrap = QWidget()
         left_layout = QVBoxLayout(left_wrap)
         left_layout.setContentsMargins(0, 0, 0, 0)
+        # v0.4.2 P1 M4：YouTube URL 输入框 + 抓取按钮（放在 DropArea 上方）
+        self.yt_url_edit = QLineEdit()
+        self.yt_url_edit.setPlaceholderText(_tr("youtube.url.placeholder"))
+        self.yt_url_edit.setClearButtonEnabled(True)
+        self.yt_fetch_button = QPushButton(_tr("youtube.fetch"))
+        self.yt_fetch_button.clicked.connect(self._on_youtube_fetch)
+        yt_row = QHBoxLayout()
+        yt_row.addWidget(self.yt_url_edit, 1)
+        yt_row.addWidget(self.yt_fetch_button)
+        left_layout.addLayout(yt_row)
         left_layout.addWidget(self.drop_area)
         splitter.addWidget(left_wrap)
         splitter.addWidget(self.file_list)
@@ -139,6 +152,8 @@ class MainWindow(QMainWindow):
         self._active_worker: ConversionWorker | None = None
         # ：批量转换时取消按钮要能取消 batch
         self._active_batch: BatchWorker | None = None
+        # v0.4.2 P1 M4：YouTube 抓取 worker（一次只能跑一个）
+        self._active_youtube: YouTubeFetchWorker | None = None
 
     # -------- slots --------
 
@@ -219,6 +234,84 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "导出失败", f"写入 {path} 失败：\n{e}")
             return
         self.status.showMessage(f"已导出到 {path}", 5000)
+
+    def _on_youtube_fetch(self) -> None:
+        """v0.4.2 P1 M4：用户点"抓取"按钮 → 启动 YouTubeFetchWorker。
+
+        流程：
+        1) 校验 URL（白名单格式 / extract_video_id 非空）
+        2) 启动 YouTubeFetchWorker（QThread 异步）
+        3) 禁用输入框 + 按钮，显示进度条 indeterminate
+        4) finished → PreviewPanel.set_markdown
+        5) error → 状态栏 + QMessageBox.warning
+        6) 任何分支都要 deleteLater 释放 worker
+        """
+        from PySide6.QtWidgets import QMessageBox
+
+        from src.core.youtube import extract_video_id
+
+        url = self.yt_url_edit.text().strip()
+        if not url:
+            QMessageBox.information(self, "YouTube 抓取", "请先粘贴一个 YouTube URL")
+            return
+        if extract_video_id(url) is None:
+            QMessageBox.warning(
+                self, "YouTube 抓取", f"不是有效的 YouTube URL：\n{url}"
+            )
+            return
+        # 防二次点击
+        if self._active_youtube is not None and self._active_youtube.isRunning():
+            self.status.showMessage("已有 YouTube 抓取在进行中…", 3000)
+            return
+
+        # 禁用 UI + 显示进度
+        self.yt_url_edit.setEnabled(False)
+        self.yt_fetch_button.setEnabled(False)
+        self.progress_bar.setRange(0, 0)  # indeterminate
+        self.progress_bar.setVisible(True)
+        self.status.showMessage(f"正在抓取字幕：{url}")
+
+        worker = YouTubeFetchWorker(url, timeout=30)
+        self._active_youtube = worker
+        worker.finished.connect(self._on_youtube_finished)
+        worker.error.connect(self._on_youtube_error)
+        # finished 或 error 都要 cleanup（避免两条路径都漏 deleteLater）
+        worker.finished.connect(worker.deleteLater)
+        worker.error.connect(worker.deleteLater)
+        worker.start()
+
+    def _on_youtube_finished(self, markdown: str) -> None:
+        """v0.4.2 P1 M4：YouTube 抓取成功 → 写入 PreviewPanel。"""
+        self.preview_panel.set_markdown(markdown)
+        self.status.showMessage(
+            f"YouTube 字幕已抓取（{len(markdown)} 字符）", 5000
+        )
+        # 恢复 UI
+        self._reset_youtube_ui()
+
+    def _on_youtube_error(self, code: str) -> None:
+        """v0.4.2 P1 M4：YouTube 抓取失败 → 弹模态。"""
+        from PySide6.QtWidgets import QMessageBox
+
+        from src.core.errors import ERROR_MESSAGES, ErrorCode
+
+        try:
+            ec = ErrorCode(code)
+            msg = ERROR_MESSAGES.get(ec, {}).get("zh_CN", f"抓取失败：{code}")
+        except ValueError:
+            msg = f"抓取失败：{code}"
+
+        self.status.showMessage(f"YouTube 抓取失败：{code}", 5000)
+        QMessageBox.warning(self, "YouTube 抓取失败", f"{msg}\n\n错误码：{code}")
+        self._reset_youtube_ui()
+
+    def _reset_youtube_ui(self) -> None:
+        """v0.4.2 P1 M4：恢复 YouTube 输入框 + 按钮 + 进度条。"""
+        self.yt_url_edit.setEnabled(True)
+        self.yt_fetch_button.setEnabled(True)
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setVisible(False)
+        self._active_youtube = None
 
     def _on_file_selected(self, path: str) -> None:
         # 取消上一个 worker（如果有）

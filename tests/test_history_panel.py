@@ -114,3 +114,50 @@ def test_history_panel_marks_failed_entries(qtbot, history_with_entries):
             found_failed = True
             break
     assert found_failed, "应有失败标记的行"
+
+
+# ----------- v0.4.2 P1 A3：表头 i18n 化 -----------
+
+def test_history_panel_columns_use_i18n(qtbot, history_with_entries):
+    """v0.4.2 P1 A3：_COLUMNS 是 (i18n_key, fallback) tuple，表头走 tr()。
+
+    验证：
+    - _COLUMNS 是元组，每个元素是 (key, fallback) 二元组
+    - len(_COLUMNS) = 7
+    - 运行时表头走 tr()（不依赖硬编码字符串）
+    """
+    from src.ui.history_panel import HistoryPanel
+    panel = HistoryPanel(history_with_entries)
+    qtbot.addWidget(panel)
+    # _COLUMNS 是 (key, fallback) tuple
+    assert len(HistoryPanel._COLUMNS) == 7
+    for col in HistoryPanel._COLUMNS:
+        assert isinstance(col, tuple) and len(col) == 2
+        key, fallback = col
+        # key 形如 "history.column.xxx"
+        assert key.startswith("history.column."), f"unexpected key: {key}"
+        # fallback 是非空字符串
+        assert fallback and isinstance(fallback, str)
+    # 表头实际渲染：每个 header label 要么是 tr(key) 命中，要么是 fallback
+    headers = [
+        panel.table_widget.horizontalHeaderItem(i).text()
+        for i in range(panel.table_widget.columnCount())
+    ]
+    for i, (key, fallback) in enumerate(HistoryPanel._COLUMNS):
+        from src.ui.i18n import tr
+        expected = tr(key) if tr(key) != key else fallback
+        assert headers[i] == expected, (
+            f"column {i}: expected {expected!r}, got {headers[i]!r}"
+        )
+
+
+def test_history_panel_placeholder_uses_i18n(qtbot, history_with_entries):
+    """v0.4.2 P1 A3：搜索框 placeholder 走 tr()。"""
+    from src.ui.history_panel import HistoryPanel
+    panel = HistoryPanel(history_with_entries)
+    qtbot.addWidget(panel)
+    placeholder = panel.search_edit.placeholderText()
+    # 占位符不应是空字符串
+    assert placeholder, "placeholder should not be empty"
+    # zh_CN 翻译下应是"搜索路径或文件名..."
+    assert "搜索" in placeholder or "search" in placeholder.lower()

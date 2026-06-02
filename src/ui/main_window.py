@@ -210,8 +210,6 @@ class MainWindow(QMainWindow):
 
     def _on_audio_rejected(self, audio_paths: list[str]) -> None:
         """v0.4.0 Task C：音频被 E_FILE_006 拦截，弹模态告知用户。"""
-        from PySide6.QtWidgets import QMessageBox
-
         # 只显示前 5 个文件名，避免弹窗过宽
         sample = "\n".join(Path(p).name for p in audio_paths[:5])
         more = f"\n... 还有 {len(audio_paths) - 5} 个" if len(audio_paths) > 5 else ""
@@ -232,8 +230,6 @@ class MainWindow(QMainWindow):
 
     def _on_copy_clicked(self) -> None:
         """v0.4.1 P0 M1：把当前预览的 Markdown 复制到系统剪贴板。"""
-        from PySide6.QtWidgets import QMessageBox
-
         if self.preview_panel.is_empty():
             QMessageBox.information(
                 self, "复制 Markdown", "预览区为空，请先选中文件完成转换。"
@@ -373,8 +369,6 @@ class MainWindow(QMainWindow):
         5) error → 状态栏 + QMessageBox.warning
         6) 任何分支都要 deleteLater 释放 worker
         """
-        from PySide6.QtWidgets import QMessageBox
-
         from src.core.youtube import extract_video_id
 
         url = self.yt_url_edit.text().strip()
@@ -418,8 +412,6 @@ class MainWindow(QMainWindow):
 
     def _on_youtube_error(self, code: str) -> None:
         """v0.4.2 P1 M4：YouTube 抓取失败 → 弹模态。"""
-        from PySide6.QtWidgets import QMessageBox
-
         from src.core.errors import ERROR_MESSAGES, ErrorCode
 
         try:
@@ -706,8 +698,6 @@ class MainWindow(QMainWindow):
         dlg.show()  # 非模态，可与主窗口并存
 
     def _show_about(self) -> None:
-        from PySide6.QtWidgets import QMessageBox
-
         QMessageBox.about(
             self,
             "关于 Lei_MD",

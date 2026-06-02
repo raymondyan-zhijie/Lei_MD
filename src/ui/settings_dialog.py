@@ -39,6 +39,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.ui.i18n import tr as _tr
+
 
 class SettingsDialog(QDialog):
     """Lei_MD 设置对话框。"""
@@ -53,7 +55,7 @@ class SettingsDialog(QDialog):
     def __init__(self, config_manager, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._cm = config_manager
-        self.setWindowTitle("Lei_MD 设置")
+        self.setWindowTitle(_tr("settings.title"))
         self.resize(560, 480)
 
         # 构造所有 widget
@@ -113,16 +115,16 @@ class SettingsDialog(QDialog):
         ):
             w.setEnabled(False)  # v0.4.4+ 禁用
 
-        # 按钮
-        self.reset_button = QPushButton("恢复默认")
+        # 按钮（i18n 键：settings.reset / settings.save / settings.cancel）
+        self.reset_button = QPushButton(_tr("settings.reset"))
         self.button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
-        # 中文按钮文字
+        # OK / Cancel 按钮文字走 i18n（settings.save / settings.cancel）
         ok_btn = self.button_box.button(QDialogButtonBox.StandardButton.Ok)
-        ok_btn.setText("确定")
+        ok_btn.setText(_tr("settings.save"))
         cancel_btn = self.button_box.button(QDialogButtonBox.StandardButton.Cancel)
-        cancel_btn.setText("取消")
+        cancel_btn.setText(_tr("settings.cancel"))
 
     def _build_layout(self) -> None:
         """布局。"""
@@ -134,7 +136,7 @@ class SettingsDialog(QDialog):
         out_form.addRow("输出目录：", self.output_dir_combo)
         out_form.addRow("自定义输出路径：", self.custom_output_edit)
         out_form.addRow("", self.auto_convert_check)
-        root.addWidget(QLabel("── 输出行为 ──"))
+        root.addWidget(QLabel(_tr("settings.group.output")))
         root.addWidget(out_group)
 
         # 容量 / 性能
@@ -142,7 +144,7 @@ class SettingsDialog(QDialog):
         cap_form = QFormLayout(cap_group)
         cap_form.addRow("历史保留条数：", self.max_history_spin)
         cap_form.addRow("批量并发数 (1-8)：", self.batch_concurrency_spin)
-        root.addWidget(QLabel("── 容量 / 性能 ──"))
+        root.addWidget(QLabel(_tr("settings.group.capacity")))
         root.addWidget(cap_group)
 
         # 界面
@@ -150,7 +152,7 @@ class SettingsDialog(QDialog):
         ui_form = QFormLayout(ui_group)
         ui_form.addRow("语言：", self.language_combo)
         ui_form.addRow("主题：", self.theme_combo)
-        root.addWidget(QLabel("── 界面 ──"))
+        root.addWidget(QLabel(_tr("settings.group.ui")))
         root.addWidget(ui_group)
 
         # LLM（v0.4.4 deprecated：未实现。group 仍渲染但 widget 全 setEnabled(False)）

@@ -7,6 +7,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-06-02
+
+v0.4.4 之后的小型治理 patch。**专家审查第一批 11 项中的 10 项 P0/P1/P2 修复，1 项 E1 延后到 v0.5.0+**，**3 commit**。**275/275 测试绿**。
+
+### Fixed
+- **A1 (428dca2) 删 main_window 冗余 import**：`import` 段清 5 处未使用符号
+- **D1/D2/D3 (428dca2) SettingsDialog i18n 化**：4 个 group title + 3 个 button + 窗口标题 全部走 `tr()`，新增 7 个 i18n 键（zh+en）
+- **A3 (83f9f91) i18n.py docstring 修正**：删除错误注释
+- **B1 (83f9f91) 删错误注释**：DropArea 中关于 Qt 内部机制的不准确描述
+- **D5 (83f9f91) YouTube 3 个弹窗 i18n 化**：模态警告文本走 `tr()`
+- **D6 (83f9f91) DropArea placeholder 拆 3 键**：拖拽 / 松开 / 文件类型说明分别走 i18n；修复 `test_drop_area` 中 "drag" 断言
+- **A2 (8f4bb1f) reload_language 移到公开 API 段**：文档结构对齐
+- **A4 (8f4bb1f) 菜单/工具栏/对话框 i18n 化**：所有 UI 可见文字走 `tr()`
+
+### Documentation
+- **C1 (8f4bb1f) README 双语界面行**：补全英文件
+- **C2 (8f4bb1f) docs/02-architecture.en.md §5.1+5.2 重写**：完全离线 → 本地优先
+
+### Deferred
+- **E1 双重触发器重构**：`MainWindow._on_config_changed` 同时承担 theme 和 language 切换，破坏 config schema 才做 → 推迟到 v0.5.0+；当前加注释 + 测试覆盖行为
+
+### Verified
+- ✅ 275/275 测试绿（v0.4.4 → v0.4.5: 0 新增；纯治理）
+- ✅ ruff 0 errors
+- ✅ CI #20 8/8 矩阵绿
+- ✅ origin/main = 8f4bb1f 二次验证
+- ✅ release id 333073483
+
 ## [0.4.4] - 2026-06-02
 
 v0.4.3 之后的第二个治理 patch。**专家审查第二批 19 项中的 P0 + 1 项 P1（R4-6），共 5 commit**。**275/275 测试绿**。**CI #18 8/8 绿**。

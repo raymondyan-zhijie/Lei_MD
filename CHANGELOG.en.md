@@ -7,6 +7,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-06-02
+
+Small governance patch after v0.4.4. **10 of 11 items from the first expert review fixed (P0/P1/P2), 1 item (E1) deferred to v0.5.0+**, **3 commits**. **275/275 tests green**.
+
+### Fixed
+- **A1 (428dca2) Remove redundant imports in main_window**: cleared 5 unused symbols from import block
+- **D1/D2/D3 (428dca2) SettingsDialog i18n-ified**: 4 group titles + 3 buttons + window title all routed through `tr()`, 7 new i18n keys (zh+en)
+- **A3 (83f9f91) i18n.py docstring correction**: removed inaccurate comments
+- **B1 (83f9f91) Removed misleading comment**: inaccurate description of Qt internals in DropArea
+- **D5 (83f9f91) YouTube 3 dialogs i18n-ified**: modal warning text routed through `tr()`
+- **D6 (83f9f91) DropArea placeholder split into 3 keys**: drag / release / file-type hints each routed through i18n; fixed `test_drop_area` "drag" assertion
+- **A2 (8f4bb1f) reload_language moved to public API section**: doc structure aligned
+- **A4 (8f4bb1f) Menu / toolbar / dialog i18n-ified**: all visible UI text routed through `tr()`
+
+### Documentation
+- **C1 (8f4bb1f) README bilingual UI line**: completed the English file
+- **C2 (8f4bb1f) docs/02-architecture.en.md §5.1+5.2 rewrite**: fully-offline → local-first
+
+### Deferred
+- **E1 dual-trigger refactor**: `MainWindow._on_config_changed` carries both theme and language switch; refactor needs config schema break → deferred to v0.5.0+; for now comments + test coverage describe the behavior
+
+### Verified
+- ✅ 275/275 tests green (v0.4.4 → v0.4.5: 0 new; governance-only)
+- ✅ ruff 0 errors
+- ✅ CI #20 8/8 matrix green
+- ✅ origin/main = 8f4bb1f secondary verified
+- ✅ release id 333073483
+
 ## [0.4.4] - 2026-06-02
 
 Second governance patch after v0.4.3. **Covers P0 + 1 P1 (R4-6) from the 19-item second expert review, 5 commits total**. **275/275 tests green**. **CI #18 8/8 green**.

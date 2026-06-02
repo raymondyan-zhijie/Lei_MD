@@ -94,8 +94,11 @@ ERROR_MESSAGES: dict[ErrorCode, dict[str, str]] = {
         "en_US": "Not a valid YouTube URL: {filename}",
     },
     ErrorCode.E_INTERNAL_001: {
-        "zh_CN": "内部错误：转换引擎异常（已记录到 crash.log）",
-        "en_US": "Internal error: converter exception (logged to crash.log)",
+        # v0.4.8: 文案改了。说具体路径（%LOCALAPPDATA%\Lei_MD\crash.log\），
+        # 之前 v0.4.0~v0.4.7 说"已记录到 crash.log"是假话（代码没写文件）。
+        # 现在 src.core.crash_handler 真实现写文件 + Worker 调它。
+        "zh_CN": "内部错误：转换引擎异常（已记录到 %LOCALAPPDATA%\\Lei_MD\\crash.log\\）",
+        "en_US": "Internal error: converter exception (logged to %LOCALAPPDATA%\\Lei_MD\\crash.log\\)",
     },
     # v0.4.4+ P0: E_SYS_002 错误码之前在 ErrorCode 枚举里定义但没在
     # ERROR_MESSAGES 登记，main_window.py 的 _resolve_output_dir / _on_export_clicked

@@ -84,6 +84,22 @@ hiddenimports = [
     "PySide6.QtPrintSupport",
     # darkdetect fallback (theme detection)
     "darkdetect",
+    # v0.4.8: defusedxml submodules — PyInstaller's static analysis does
+    # NOT follow the wrapper → stdlib re-export chain in defusedxml
+    # submodules, so they can be silently absent from the bundle even
+    # though `import defusedxml` works. Listing every submodule ensures
+    # each `from xml.dom.X import ...` line at module top of each
+    # defusedxml/*.py is satisfied at runtime.
+    "defusedxml",
+    "defusedxml.minidom",
+    "defusedxml.ElementTree",
+    "defusedxml.sax",
+    "defusedxml.pulldom",
+    "defusedxml.expatbuilder",
+    "defusedxml.expatreader",
+    "defusedxml.common",
+    "defusedxml.xmlrpc",
+    "defusedxml.cElementTree",
 ]
 
 # ──────────────────────────────────────────────────────────────────────
@@ -119,8 +135,11 @@ excludes = [
     # the bundled exe with `ModuleNotFoundError: No module named
     # 'xml.dom.minidom'`. Defusedxml exists specifically to wrap
     # these (with XXE protection), so we want them present.
-    "unittest",
-    "pydoc",
+    # Same logic applies to `unittest` (used by test discovery hooks
+    # in some libs) and `pydoc` (used by IDE integrations). Stdlib
+    # submodules are NOT safe to exclude. See skill
+    # `windows-desktop-build-pipeline`/references/pyinstaller-spec-pitfalls.md
+    # §11 for the full rule + detection script.
 ]
 
 # ──────────────────────────────────────────────────────────────────────

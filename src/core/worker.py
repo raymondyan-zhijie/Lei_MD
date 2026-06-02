@@ -27,6 +27,7 @@ from typing import Any
 
 from PySide6.QtCore import QThread, Signal
 
+from src.core import crash_handler
 from src.core.errors import ConversionError, ErrorCode  # v0.4.2 P1 C1：顶层导入
 
 
@@ -100,8 +101,21 @@ class ConversionWorker(QThread):
             # 已是 ConversionError 直接转发；其他异常包装
             if isinstance(e, ConversionError):
                 error_msg = str(e.code)
+                # v0.4.8: 写 traceback 到 crash.log（之前 UI 撒谎说"已记录到 crash.log"
+                # 但代码从来没写 — 兑现文案承诺）
+                crash_handler.write(
+                    e.cause if e.cause is not None else e,
+                    context=f"ConversionWorker (ConversionError code={e.code})",
+                    filename=str(self._file_path),
+                )
                 self.error.emit(e)
             else:
+                # v0.4.8: 写原始异常到 crash.log（用户能贴给开发者诊断）
+                crash_handler.write(
+                    e,
+                    context="ConversionWorker (unhandled exception wrapped as E_INTERNAL_001)",
+                    filename=str(self._file_path),
+                )
                 ce = ConversionError(
                     ErrorCode.E_INTERNAL_001,
                     filename=str(self._file_path),
@@ -166,10 +180,23 @@ class YouTubeFetchWorker(QThread):
             md = fetch_youtube_transcript(self._url, timeout=self._timeout)
         except YouTubeFetchError as e:
             # e.code 是字符串形式的 ErrorCode（"E_CONVERT_001" 等）
+            # v0.4.8: 写 traceback 到 crash.log（YouTubeFetchError 通常带 code，
+            # 但底层网络/HTTP 异常信息值得保留）
+            crash_handler.write(
+                e,
+                context=f"YouTubeFetchWorker (YouTubeFetchError code={e.code})",
+                filename=self._url,
+            )
             self.error.emit(e.code)
             return
-        except Exception:
+        except Exception as e:
             # 兜底：未知异常 → E_INTERNAL_001
+            # v0.4.8: 写 traceback 到 crash.log
+            crash_handler.write(
+                e,
+                context="YouTubeFetchWorker (unhandled exception wrapped as E_INTERNAL_001)",
+                filename=self._url,
+            )
             self.error.emit("E_INTERNAL_001")
             return
         if self._cancel_event.is_set():

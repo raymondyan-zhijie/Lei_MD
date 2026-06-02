@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2026-06-02
+### Fixed
+- **Crash log handler**: the UI message “已记录到 crash.log” was a lie for v0.4.0~v0.4.7 — no code ever wrote the file. Implemented `src/core/crash_handler.py` that writes the original exception + full traceback to `%LOCALAPPDATA%\Lei_MD\crash.log\YYYYMMDD-HHMMSS-XXXX.log` (frozen) or `<repo>/crash.log/` (dev). Both `ConversionWorker` and `YouTubeFetchWorker` now invoke it from every except branch. Error message updated to point at the real path.
+- **PyInstaller spec excludes**: removed the last two stdlib entries (`unittest`, `pydoc`) and added all 8 `defusedxml.*` submodules to `hiddenimports`. v0.4.7 only removed `xml.dom.minidom`, leaving the rest of the wrapper → stdlib re-export chain vulnerable. `defusedxml` packages (minidom / ElementTree / sax / pulldom / expatbuilder / expatreader / common / xmlrpc / cElementTree) are now all explicitly bundled.
+- **Crash log files on Windows**: `%LOCALAPPDATA%\Lei_MD\crash.log\———per-crash file, not append, safe to share.
+### Changed
+- **CI build `with_installer` default**: `workflow_dispatch` input `with_installer` now defaults to `true` (was `false`). The Release page now offers a `Setup.exe` (NSIS installer) on every tag push, not just a portable green exe. NSIS step adds ≈1–2 min to the build.
+
 ## [0.4.7] - 2026-06-02
 ### Fixed
 - **Build**: removed `xml.dom.minidom` from PyInstaller `excludes` list in `Lei_MD.spec`.

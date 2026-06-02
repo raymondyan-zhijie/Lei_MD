@@ -7,6 +7,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-06-02
+
+First **build infrastructure release** after v0.4.5. 10 commits: version bump 0.4.3→0.4.5 cleanup + 6 build pipeline bug fixes (exposed by PyInstaller 6.20 / PowerShell 7 strict mode) + documentation governance ("fully offline" → "local-first" + docs/07-build-release §7 upgrade). **GitHub Actions build pipeline working**. **275/275 tests green**.
+
+### Fixed
+- **`__version__` 0.4.3 → 0.4.5 (d22bf7a)**: R1.6 commit missed bumping `src/__init__.py` L7 + `pyproject.toml` L3, causing `test_version_consistency` to fail on actual v0.4.5 release
+- **CHANGELOG v0.4.5 section added (c008fef)**: R1.6 bump + 3 audit commits all missed CHANGELOG
+- **PowerShell 7 strict-mode (fbdcedb)**: `build-windows.ps1` L188/189 `Write-Host "... v$AppVersion:"` colon treated as scope qualifier by PowerShell 7 → wrap in `${AppVersion}`
+- **spec `__file__` → SPECPATH (507fec4)**: `Lei_MD.spec` L26 `Path(__file__).resolve().parent` rejected by PyInstaller 6.20.0 strict mode → use PyInstaller's built-in `SPECPATH` global
+- **spec icons dir missing (ae1e950)**: v0.4.3 spec wrote `("src/resources/icons", ...)` but the directory was never created in the repo → drop that datas entry + comment out ICON (v0.4.6 still has no .ico)
+- **spec hiddenimports rewrite (51e5d6a)**: v0.4.3 spec listed `_outlook_converter` (renamed to `_outlook_msg_converter` in markitdown 0.1+) and `yt_dlp.extractor` (markitdown 0.1+ dropped yt-dlp backend in favor of youtube_transcript_api) → grep actual site-packages to enumerate 23 converters
+- **installer LICENSE path (51e5d6a)**: `installer.nsi` L50 `MUI_PAGE_LICENSE "LICENSE"` missing `..\` prefix (other `File` commands have it) → `..\LICENSE`
+
+### Added
+- **`.github/workflows/build.yml`**: windows-latest + py3.12 + PyInstaller onefile automation; triggers = `v*` tag push (auto build + attach Release) / `workflow_dispatch` (manual + optional NSIS) / weekly Sunday 02:00 UTC dry-run
+
+### Documentation
+- **Local-first wording (1741bca)**: 9 occurrences of "fully offline" → "local-first" (R2-1 commit missed these)
+- **docs/IMPLEMENTATION_VS_PLAN.md cutoff bumped to v0.4.5**
+- **docs/07-build-release §7 upgraded from v0.5.0 plan → v0.4.5 enabled** (6d53651): trigger table / usage / artifacts / duration / in-the-wild pitfalls
+
+### Verified
+- ✅ 275/275 tests green (v0.4.5 → v0.4.6: 0 new; pure build + doc governance)
+- ✅ ruff 0 errors
+- ✅ CI #22/#23 8/8 matrix green
+- ✅ GitHub Actions build.yml end-to-end verified (7 dispatches: 1-6 fixed bugs, #7 success):
+  - **build #4 success** (PyInstaller onefile, no NSIS) → `Lei_MD-0.4.5.exe` 138 MB
+  - **build #7 success** (PyInstaller + NSIS) → `Lei_MD-0.4.5.exe` + `Lei_MD-0.4.5-Setup.exe` 138 MB each
+- ✅ PE header + version string + MD5/SHA256 all verified
+- ✅ Files uploaded to filebrowser: `https://file.leimengde.net/files/2026-06-02/`
+
+### Artifacts (this release)
+- `Lei_MD-0.4.5.exe` (PyInstaller onefile, 138 MB, GUI x86-64)
+  - MD5: `d0164fd026bcd3a6bc12ab8c58c7215f`
+  - SHA256: `e09d6fcdf9aef4396a28309dac5d5aea4dc9e01f5f3be59d59db4644dfb8f71a`
+- `Lei_MD-0.4.5-Setup.exe` (NSIS installer, 138 MB, NSIS bootstrapper 32-bit)
+  - MD5: `f339fd0cb4830540e3b6d3e875d33c88`
+  - SHA256: `b7d9eb42afd73334a37d4a820feb66a2594596236e23b3562a690c99953fb87f`
+
+> **v0.4.5 → v0.4.6 bump rationale**: v0.4.5 (release 333073483) was the i18n completeness patch; these 10 commits are **new build infrastructure** (a minor, not a patch). Honest version number.
+
 ## [0.4.5] - 2026-06-02
 
 Small governance patch after v0.4.4. **10 of 11 items from the first expert review fixed (P0/P1/P2), 1 item (E1) deferred to v0.5.0+**, **3 commits**. **275/275 tests green**.

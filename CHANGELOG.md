@@ -7,6 +7,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-06-02
+
+v0.4.5 之后的**首个 build infrastructure release**。10 commits：version bump 0.4.3→0.4.5 收尾 + 6 个 build pipeline bug fix（PyInstaller 6.20 / PowerShell 7 strict mode 暴露）+ 文档治理（"完全离线" → "本地优先" + docs/07-build-release §7 升级）。**GitHub Actions build pipeline 跑通**。**275/275 测试绿**。
+
+### Fixed
+- **`__version__` 0.4.3 → 0.4.5 (d22bf7a)**：R1.6 commit 漏 bump `src/__init__.py` L7 + `pyproject.toml` L3，导致 `test_version_consistency` 在 0.4.5 release 后实际 fail
+- **CHANGELOG v0.4.5 段补 (c008fef)**：R1.6 bump + 审核 3 个 commit 都漏 CHANGELOG
+- **PowerShell 7 strict-mode (fbdcedb)**：`build-windows.ps1` L188/189 `Write-Host "... v$AppVersion:"` 冒号被 PowerShell 7 当 scope qualifier 起始 → `${AppVersion}` 包起来
+- **spec `__file__` → SPECPATH (507fec4)**：`Lei_MD.spec` L26 `Path(__file__).resolve().parent` —— PyInstaller 6.20.0 strict mode 拒收，改用 PyInstaller 内置 global `SPECPATH`
+- **spec icons dir 缺失 (ae1e950)**：v0.4.3 spec 写 `("src/resources/icons", ...)` 但仓库从未建该目录 → 删 datas 该行 + ICON 注释（v0.4.6 还没 .ico）
+- **spec hiddenimports 重写 (51e5d6a)**：v0.4.3 spec 列 `_outlook_converter`（markitdown 0.1+ 改名为 `_outlook_msg_converter`）和 `yt_dlp.extractor`（markitdown 0.1+ 已移除 yt-dlp backend 改用 youtube_transcript_api）—— 改用 grep 实际 site-packages 枚举 23 个 converter
+- **installer LICENSE 路径 (51e5d6a)**：`installer.nsi` L50 `MUI_PAGE_LICENSE "LICENSE"` 漏 `..\` 前缀（其它 `File` 命令都有）→ `..\LICENSE`
+
+### Added
+- **`.github/workflows/build.yml`**：windows-latest + py3.12 + PyInstaller onefile 自动化；触发器 = `v*` tag push（自动 build + attach Release）/ `workflow_dispatch`（手动 + 可选 NSIS）/ 每周日 02:00 UTC dry-run
+
+### Documentation
+- **本地优先措辞 (1741bca)**：9 处"完全离线" / "fully offline" → "本地优先" / "local-first"（R2-1 commit 漏改）
+- **docs/IMPLEMENTATION_VS_PLAN.md 截止 v0.4.5**
+- **docs/07-build-release §7 升级 v0.5.0 计划 → v0.4.5 已上线**（6d53651）：触发条件表 / 用法 / 产物 / 耗时 / 实战坑
+
+### Verified
+- ✅ 275/275 测试绿（v0.4.5 → v0.4.6: 0 新增；纯 build + 文档治理）
+- ✅ ruff 0 errors
+- ✅ CI #22/#23 8/8 矩阵绿
+- ✅ GitHub Actions build.yml 端到端验证（7 次触发：1-6 修 bug，#7 success）：
+  - **build #4 success** (PyInstaller onefile, no NSIS) → `Lei_MD-0.4.5.exe` 138 MB
+  - **build #7 success** (PyInstaller + NSIS) → `Lei_MD-0.4.5.exe` + `Lei_MD-0.4.5-Setup.exe` 各 138 MB
+- ✅ PE 头 + version 字符串 + MD5/SHA256 全部验证通过
+- ✅ 文件已上传 filebrowser: `https://file.leimengde.net/files/2026-06-02/`
+
+### Artifacts (this release)
+- `Lei_MD-0.4.5.exe` (PyInstaller onefile, 138 MB, GUI x86-64)
+  - MD5: `d0164fd026bcd3a6bc12ab8c58c7215f`
+  - SHA256: `e09d6fcdf9aef4396a28309dac5d5aea4dc9e01f5f3be59d59db4644dfb8f71a`
+- `Lei_MD-0.4.5-Setup.exe` (NSIS installer, 138 MB, NSIS bootstrapper 32-bit)
+  - MD5: `f339fd0cb4830540e3b6d3e875d33c88`
+  - SHA256: `b7d9eb42afd73334a37d4a820feb66a2594596236e23b3562a690c99953fb87f`
+
+> **v0.4.5 → v0.4.6 bump 理由**：v0.4.5 (release 333073483) 是 i18n 完善 patch；本次 10 commits 是**新增 build infrastructure**（不算 patch 而算 minor）。诚实版本号。
+
 ## [0.4.5] - 2026-06-02
 
 v0.4.4 之后的小型治理 patch。**专家审查第一批 11 项中的 10 项 P0/P1/P2 修复，1 项 E1 延后到 v0.5.0+**，**3 commit**。**275/275 测试绿**。

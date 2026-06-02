@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.7] - 2026-06-02
+### Fixed
+- **Build**: removed `xml.dom.minidom` from PyInstaller `excludes` list in `Lei_MD.spec`.
+  The `defusedxml` package re-exports from stdlib `xml.dom.*` modules at runtime;
+  excluding the alias caused `ModuleNotFoundError: No module named 'xml.dom.minidom'`
+  when launching v0.4.6 binary and hitting the RSS converter import chain.
+
 ## [0.4.6] - 2026-06-02
 
 v0.4.5 之后的**首个 build infrastructure release**。10 commits：version bump 0.4.3→0.4.5 收尾 + 6 个 build pipeline bug fix（PyInstaller 6.20 / PowerShell 7 strict mode 暴露）+ 文档治理（"完全离线" → "本地优先" + docs/07-build-release §7 升级）。**GitHub Actions build pipeline 跑通**。**275/275 测试绿**。

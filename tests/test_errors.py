@@ -74,14 +74,12 @@ def test_e_sys_002_output_path_unwritable():
 
     e = ConversionError(ErrorCode.E_SYS_002)
     assert e.code is ErrorCode.E_SYS_002
-    # ERROR_MESSAGES 没填 → fallback 走 str(code)。注意 ErrorCode 是
-    # str Enum，str(member) 返回 "ErrorCode.E_SYS_002"（Enum 形式），
-    # 而 .value 返回 "E_SYS_002"（纯字符串）。ConversionError 实现用
-    # str(code)，所以这里也用 str(code) 比对。
-    assert e.user_message == str(ErrorCode.E_SYS_002)
-    # get_message 同理
-    assert e.get_message("zh_CN") == str(ErrorCode.E_SYS_002)
-    assert e.get_message("en_US") == str(ErrorCode.E_SYS_002)
+    # v0.4.4+ P0: E_SYS_002 现在在 ERROR_MESSAGES 登记了双语文案。
+    # 之前测试假设没登记 → fallback 走 str(code)。现在文案：
+    assert e.get_message("zh_CN") == "输出路径不可写或不存在：{path}"
+    assert e.get_message("en_US") == "Output path is not writable or does not exist: {path}"
+    # user_message 走 lang 默认 zh_CN
+    assert e.user_message == "输出路径不可写或不存在：{path}"
 
 
 def test_e_sys_003_windows_max_path():

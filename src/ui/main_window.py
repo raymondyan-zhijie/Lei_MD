@@ -20,9 +20,11 @@ from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QHBoxLayout,
     QLineEdit,
     QMainWindow,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QSplitter,
@@ -220,8 +222,13 @@ class MainWindow(QMainWindow):
             )
 
     def _on_export_clicked(self) -> None:
-        """v0.4.1 P0 M2：把当前预览的 Markdown 导出为 .md 文件。"""
-        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        """v0.4.1 P0 M2：把当前预览的 Markdown 导出为 .md 文件。
+
+        v0.4.4+ P0 改造：若 ``output_dir=custom`` 且 ``custom_output_dir``
+        存在可写，用它作 QFileDialog 初始目录（而不是 home）。写盘失败用
+        ``E_SYS_002`` 错误码提示，而不是临时字符串。
+        """
+        from src.core.errors import ERROR_MESSAGES, ErrorCode
 
         if self.preview_panel.is_empty():
             QMessageBox.information(
@@ -234,10 +241,16 @@ class MainWindow(QMainWindow):
             default_name = Path(selected[0]).stem + ".md"
         else:
             default_name = "output.md"
+        # v0.4.4+: 配置的 custom_output_dir 作为 dialog 初始目录
+        out_dir = self._resolve_output_dir()
+        if out_dir is not None:
+            initial = str(out_dir / default_name)
+        else:
+            initial = default_name
         path, _ = QFileDialog.getSaveFileName(
             self,
             "导出 Markdown",
-            default_name,
+            initial,
             "Markdown 文件 (*.md);;所有文件 (*.*)",
         )
         if not path:
@@ -249,9 +262,61 @@ class MainWindow(QMainWindow):
             )
         except OSError as e:
             _log.warning("MainWindow._on_export_clicked: write %s failed: %s", path, e)
-            QMessageBox.warning(self, "导出失败", f"写入 {path} 失败：\n{e}")
+            # v0.4.4+ P0: 用 E_SYS_002 错误码，不是临时字符串。
+            # 用 .get() 兜底以防 ERROR_MESSAGES 没登记（理论不会，
+            # 但比 KeyError 安全）。
+            msg = ERROR_MESSAGES.get(ErrorCode.E_SYS_002, {}).get(
+                "zh_CN", f"输出路径不可写：{path}"
+            )
+            QMessageBox.warning(
+                self,
+                "导出失败",
+                f"{msg}\n路径：{path}\n{e}",
+            )
             return
         self.status.showMessage(f"已导出到 {path}", 5000)
+
+    def _resolve_output_dir(self) -> Path | None:
+        """v0.4.4+ P0: 解析 ``output_dir=custom`` 配置成实际可写 Path。
+
+        返回：
+          - ``Path``：配置指向的目录存在 + 可写
+          - ``None``：output_dir != "custom"，或 custom_output_dir 为空 /
+            不存在 / 不可写（已弹 QMessageBox 警告用户）
+
+        调用方在拿到 ``None`` 时退回到"原行为"（弹 dialog / 不自动导出）。
+        """
+        import os
+
+        from src.core.errors import ERROR_MESSAGES, ErrorCode
+
+        cfg = self._config.get()
+        if cfg.output_dir != "custom":
+            return None
+        if not cfg.custom_output_dir.strip():
+            return None
+        p = Path(cfg.custom_output_dir).expanduser()
+        if not p.exists() or not p.is_dir():
+            msg = ERROR_MESSAGES.get(ErrorCode.E_SYS_002, {}).get(
+                "zh_CN", f"输出路径不存在：{p}"
+            )
+            QMessageBox.warning(
+                self,
+                "输出目录无效",
+                f"{msg}\n路径：{p}",
+            )
+            return None
+        if not os.access(p, os.W_OK):
+            msg = ERROR_MESSAGES.get(ErrorCode.E_SYS_002, {}).get(
+                "zh_CN", f"输出路径不可写：{p}"
+            )
+            QMessageBox.warning(
+                self,
+                "输出目录不可写",
+                f"{msg}\n路径：{p}",
+            )
+            return None
+        return p
 
     def _on_youtube_fetch(self) -> None:
         """v0.4.2 P1 M4：用户点"抓取"按钮 → 启动 YouTubeFetchWorker。
@@ -646,8 +711,21 @@ class MainWindow(QMainWindow):
     @Slot(str, str)
     def _on_batch_item_finished(self, path: str, md: str) -> None:
         # P0.5: 成功条目落地。Markdown 写到 history（用 Path 后缀推 source_format），
-        # 同时缓存到 _batch_results 备用（未来批量 UI 可订阅此映射做"复制全部"
-        # / "合并输出" 等动作 —— 当前这层先不做，但数据先存）。
+        # 同时缓存到 _batch_results 备用。
+        # v0.4.4+ P0: 如果 output_dir=custom + 目录可写，自动写一份同名 .md 到该
+        # 目录（旁路 dialog）。这是专家建议的"批量转换应优先使用配置目录"。
+        # 配置无效时不报错（已 _resolve_output_dir 弹过 QMessageBox 一次），
+        # 只跳过自动导出，行为退回到"只写 history + 缓存"。
+        out_dir = self._resolve_output_dir()
+        if out_dir is not None:
+            try:
+                target = out_dir / (Path(path).stem + ".md")
+                target.write_text(md, encoding="utf-8")
+            except OSError as exc:
+                # 写盘失败也不能让 batch 崩，只记 status
+                self.status.showMessage(
+                    f"导出失败：{target} - {exc}", 5000
+                )
         try:
             fmt = Path(path).suffix.lstrip(".").lower() or "unknown"
         except Exception:

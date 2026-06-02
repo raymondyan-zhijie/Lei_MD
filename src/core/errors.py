@@ -97,7 +97,14 @@ ERROR_MESSAGES: dict[ErrorCode, dict[str, str]] = {
         "zh_CN": "内部错误：转换引擎异常（已记录到 crash.log）",
         "en_US": "Internal error: converter exception (logged to crash.log)",
     },
-    # E_SYS_* / E_UPDATE_* 在对应模块定义
+    # v0.4.4+ P0: E_SYS_002 错误码之前在 ErrorCode 枚举里定义但没在
+    # ERROR_MESSAGES 登记，main_window.py 的 _resolve_output_dir / _on_export_clicked
+    # 用 ERROR_MESSAGES[code] 直接取会 KeyError。补登记双语文案。
+    ErrorCode.E_SYS_002: {
+        "zh_CN": "输出路径不可写或不存在：{path}",
+        "en_US": "Output path is not writable or does not exist: {path}",
+    },
+    # E_SYS_001 / E_SYS_003 / E_UPDATE_* 仍未登记（占位，待对应模块用时补）
 }
 
 class ConversionError(Exception):

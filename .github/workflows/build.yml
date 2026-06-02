@@ -24,7 +24,13 @@ on:
         description: "Also build NSIS installer (requires makensis on PATH)"
         type: boolean
         required: false
-        default: false
+        # v0.4.8: default true. Users coming to the Release page
+        # expect a Setup.exe they can install (Program Files + Start
+        # menu + uninstaller), not a portable green exe. The earlier
+        # default false was a "be conservative with build minutes"
+        # call; the NSIS step adds ~1-2 min and produces the
+        # installer most users actually want.
+        default: true
   schedule:
     # Sunday 02:00 UTC dry-run (verifies spec/dependencies still build)
     - cron: "0 2 * * 0"

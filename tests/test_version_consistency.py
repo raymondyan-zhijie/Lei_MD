@@ -19,7 +19,16 @@ import re
 from pathlib import Path
 
 import pytest
-import tomllib
+
+# tomllib 是 Python 3.11+ 标准库（PEP 680）。CI 矩阵含 3.10
+# （github-hosted runners 仍提供 3.10），所以 py3.10 走 tomli backport，
+# py3.11+ 直接用 stdlib。R1.2 写的时候没注意 — 当时 v0.4.2 CI 矩阵把 3.10
+# 排除了，但 v0.4.1 之前的 CI 没排；现在 R1.6 跑了 v0.4.3 = 7 job 矩阵含
+# 3.10 触发 ImportError。
+try:
+    import tomllib  # py3.11+
+except ModuleNotFoundError:  # py3.10
+    import tomli as tomllib  # type: ignore[no-redef]
 
 ROOT = Path(__file__).resolve().parent.parent
 PYPROJECT = ROOT / "pyproject.toml"

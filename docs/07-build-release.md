@@ -221,34 +221,42 @@ Invoke-WebRequest `
 
 ---
 
-## 7. 进阶：CI 自动 build
+## 7. CI 自动 build（v0.4.5+ 已上线）
 
-`.github/workflows/build-windows.yml`（**v0.5.0 计划**）：
+`.github/workflows/build.yml`（v0.4.5 启用）：
 
-```yaml
-name: build-windows
-on:
-  push:
-    tags: ['v*.*.*']
-jobs:
-  build:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - run: pip install pyinstaller
-      - run: pyinstaller Lei_MD.spec
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Lei_MD-windows
-          path: dist/Lei_MD-${{ github.ref_name }}.exe
-      - uses: softprops/action-gh-release@v2  # 自动 attach 到 release
-        with:
-          files: dist/Lei_MD-${{ github.ref_name }}.exe
+**触发条件**：
+| 触发器 | 行为 |
+|---|---|
+| 推送 `v*` tag | 自动跑 → 产物上传到对应 GitHub Release |
+| `workflow_dispatch`（手动）| 跑 + 在 Actions UI 可选 NSIS |
+| 每周日 02:00 UTC | dry-run（catch spec/dep rot，零成本） |
+
+**Jobs**（1 个 windows job）：
+- `build-windows` — windows-latest × py3.12（PyInstaller + PySide6 6.7-6.10 稳定线）
+- 步骤：checkout → setup-python → [可选] `choco install nsis` → `pwsh scripts/build-windows.ps1` → `actions/upload-artifact@v4` → [tag only] `gh release upload`
+
+**用法**：
+```powershell
+# 在 GitHub Actions UI 手动触发
+gh workflow run build.yml -f with_installer=false
+# 或带 NSIS：
+gh workflow run build.yml -f with_installer=true
 ```
 
-**当前 v0.4.1 状态**：手动 build。CI build 是 v0.5.0 任务（避免吃 Actions minutes）。
+**产物**：
+- 每次 run 产 `lei-md-windows-3.12` artifact（dist/*.exe + installer/*.exe），保留 14 天
+- tag push 时**自动 attach** 到对应 GitHub Release
+
+**耗时**：
+- 首次：~8-12 分钟（windows-latest runner cold start + venv 装依赖 + PyInstaller onefile）
+- 后续：~5-8 分钟（pip cache 命中）
+
+**已知坑**（v0.4.5 实战）：
+- PowerShell 7 strict-mode 解析 `$AppVersion:`（冒号）会失败 — 必须在 `${AppVersion}` 包起来（build-windows.ps1 L188/189）
+- NSIS 安装包 job 需要显式 `choco install nsis`（windows-latest runner 默认不带）
+
+**当前 v0.4.5+ 状态**：✅ 启用。tag 推 v* 自动 build + attach Release；日常 PR/merge 只跑 `test.yml`，不影响 build minutes。
 
 ---
 

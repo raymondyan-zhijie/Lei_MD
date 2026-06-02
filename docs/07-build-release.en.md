@@ -221,34 +221,42 @@ Invoke-WebRequest `
 
 ---
 
-## 7. Future: CI auto-build (v0.5.0)
+## 7. CI auto-build (enabled in v0.4.5+)
 
-`.github/workflows/build-windows.yml` (planned v0.5.0):
+`.github/workflows/build.yml` (enabled v0.4.5):
 
-```yaml
-name: build-windows
-on:
-  push:
-    tags: ['v*.*.*']
-jobs:
-  build:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - run: pip install pyinstaller
-      - run: pyinstaller Lei_MD.spec
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Lei_MD-windows
-          path: dist/Lei_MD-${{ github.ref_name }}.exe
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/Lei_MD-${{ github.ref_name }}.exe
+**Triggers**:
+| Trigger | Behavior |
+|---|---|
+| Push `v*` tag | Auto-build → attach artifact to matching GitHub Release |
+| `workflow_dispatch` (manual) | Build + Actions UI can opt into NSIS |
+| Weekly Sunday 02:00 UTC | dry-run (catches spec/dep rot, zero-cost) |
+
+**Jobs** (1 windows job):
+- `build-windows` — windows-latest × py3.12 (PyInstaller + PySide6 6.7-6.10 stable line)
+- Steps: checkout → setup-python → [optional] `choco install nsis` → `pwsh scripts/build-windows.ps1` → `actions/upload-artifact@v4` → [tag only] `gh release upload`
+
+**Usage**:
+```powershell
+# Trigger from GitHub Actions UI
+gh workflow run build.yml -f with_installer=false
+# Or with NSIS:
+gh workflow run build.yml -f with_installer=true
 ```
 
-**v0.4.1 status**: manual build. CI build is a v0.5.0 task (to avoid eating Actions minutes during the patch cycle).
+**Artifacts**:
+- Every run produces `lei-md-windows-3.12` artifact (dist/*.exe + installer/*.exe), retained 14 days
+- On tag push the .exe is **auto-attached** to the matching GitHub Release
+
+**Duration**:
+- First run: ~8-12 minutes (windows-latest cold start + venv deps + PyInstaller onefile)
+- Subsequent: ~5-8 minutes (pip cache hits)
+
+**Known pitfalls** (v0.4.5 in-the-wild):
+- PowerShell 7 strict mode fails to parse `$AppVersion:` (colon) — must wrap in `${AppVersion}` (build-windows.ps1 L188/189)
+- NSIS installer job requires explicit `choco install nsis` (windows-latest runner has no makensis by default)
+
+**v0.4.5+ status**: ✅ enabled. Pushing a `v*` tag auto-builds + attaches the .exe to the release. Day-to-day PR/merge runs only `test.yml`, no impact on build minutes.
 
 ---
 

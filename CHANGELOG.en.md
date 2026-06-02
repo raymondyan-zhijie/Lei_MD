@@ -7,7 +7,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.3] - 2026-06-02
+
+First governance patch after v0.4.2. **Covers the first 5 of 19 P0 items from the second expert review**. **247/247 tests green**.
+
+### Fixed
+
+- **P0.1: track `Lei_MD.spec`** (`14f4eae`): spec was excluded by .gitignore but the README claimed a one-line build needs it. `build/` and `dist/` are still ignored, but a root `!Lei_MD.spec` allowlist re-adds it.
+- **P0.2: single version source** (`aa97d5d` + `34dd92d`): `pyproject.toml` `[project] version` is the single source of truth. `scripts/build-windows.ps1` reads it via `python -c "import tomllib..."`; `Lei_MD.spec` embeds it via `tomllib.loads(...)`; `installer/installer.nsi` requires `/DAPP_VERSION=...` from the build script. CI gains a `version-consistency` job. New `tests/test_version_consistency.py` with 4 tests.
+- **P0.3: main() wires Config + History** (`436ea7d`): previously `main.py` only called `MainWindow()`; now it constructs `config = ConfigManager(); history = HistoryManager(max_entries=config.get().max_history); window = MainWindow(config_manager=config, history=history)`. New 3 integration tests.
+- **P0.4: `auto_convert` wired into DropArea** (`6d54fea`): single-file drop auto-converts and selects; multi-file drop only adds to list; `auto_convert=False` only adds to list.
+- **P0.5: batch success items land in history** (`a08032a`): `BatchWorker.item_finished(path, md)` was not connected, so all successful batch markdown was lost. New slot writes to history and caches in `_batch_results`. 3 old `_FakeBW` mocks gained the `item_finished` attribute.
+
+### Security
+
+- **Isolated workflow-only commit** (`34dd92d`): PAT lacks `workflow` scope; build chain commit (`aa97d5d`) is pushed, workflow-only commit stays local.
+
+## [0.4.2] - 2026-06-02
+
+PySide6 6.11 segfault hotfix after v0.4.1. **CI #12 7/7 green**.
+
+### Fixed
+
+- **P0 PySide6 segfault** (`973a9b3`): pin `PySide6<6.11` (stay on the 6.9.x stable line) — 6.11+ triggers a segfault on ubuntu py3.12 via `QDragEnterEvent`. `src/ui/i18n.py` gains `sys._MEIPASS` support (PyInstaller resource path).
 
 ## [0.4.1] - 2026-06-02
 

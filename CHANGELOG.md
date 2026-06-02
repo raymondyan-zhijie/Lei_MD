@@ -7,7 +7,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.3] - 2026-06-02
+
+v0.4.2 之后的首个治理 patch。**专家审查第二批 19 项中的前 5 项 P0**。**247/247 测试绿**。
+
+### Fixed
+
+- **P0.1: 跟踪 `Lei_MD.spec`** (`14f4eae`)：spec 之前被 .gitignore 排除但 README 声称一键 build 需要它；`build/` `dist/` 仍忽略，根 `!Lei_MD.spec` allowlist 放行。
+- **P0.2: 单一版本源** (`aa97d5d` + `34dd92d`)：`pyproject.toml` `[project] version` 唯一真源；`scripts/build-windows.ps1` 用 `python -c "import tomllib..."` 读；`Lei_MD.spec` 用 `tomllib.loads(...)` 嵌入；`installer/installer.nsi` 强制 `/DAPP_VERSION=...` 从 build 脚本传入。CI 加 `version-consistency` job。新增 `tests/test_version_consistency.py` 4 个测试。
+- **P0.3: 入口装 Config + History** (`436ea7d`)：之前 `main.py` 只 `MainWindow()`，所有依赖都拿默认；现在 `config = ConfigManager(); history = HistoryManager(max_entries=config.get().max_history); window = MainWindow(config_manager=config, history=history)`。新增 3 个集成测试。
+- **P0.4: `auto_convert` 接入 DropArea** (`6d54fea`)：单文件拖入自动转 + 选中；多文件仅加入列表（与"非拖入"路径一致）；`auto_convert=False` 仅加入列表。
+- **P0.5: 批量成功条目落地** (`a08032a`)：之前 `BatchWorker.item_finished(path, md)` signal MainWindow 没接，批量成功 markdown 全丢；现在新 slot 写 history + 累 `_batch_results` 缓存。3 个旧 `_FakeBW` mock 补 `item_finished` 属性。
+
+### Security
+
+- **隔离 workflow-only commit** (`34dd92d`)：PAT 缺 `workflow` scope，build chain commit (`aa97d5d`) 已推，workflow-only commit 暂留本地。
+
+## [0.4.2] - 2026-06-02
+
+v0.4.1 之后 PySide6 6.11 在 py3.12 ubuntu 上 segfault 的 hotfix。**CI #12 7/7 绿**。
+
+### Fixed
+
+- **P0 PySide6 segfault** (`973a9b3`)：pin `PySide6<6.11`（6.9.x 稳定线）—— 6.11+ 在 ubuntu py3.12 上 QDragEnterEvent 触发 segfault。`src/ui/i18n.py` 加 `sys._MEIPASS` 支持（PyInstaller 资源路径）。
 
 ## [0.4.1] - 2026-06-02
 

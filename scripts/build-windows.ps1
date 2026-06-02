@@ -3,11 +3,13 @@
     Build Lei_MD Windows executable (and optional NSIS installer) from source.
 
 .DESCRIPTION
-    One-shot build for v0.4.1 release. Handles:
+    One-shot Windows build. Reads the version from pyproject.toml (single
+    source of truth) and produces dist/Lei_MD-<version>.exe. Handles:
+      - Reading the version from pyproject.toml
       - Creating an isolated build venv
       - Installing project + dev + build deps
       - Running PyInstaller against Lei_MD.spec
-      - (optional) Running NSIS to wrap into Lei_MD-0.4.1-Setup.exe
+      - (optional) Running NSIS to wrap into Lei_MD-<version>-Setup.exe
       - Copying artifacts to ./dist/ for upload
 
 .PARAMETER WithInstaller
@@ -18,11 +20,12 @@
 
 .EXAMPLE
     pwsh scripts/build-windows.ps1
-    # Builds dist/Lei_MD-0.4.1.exe (onefile)
+    # Builds dist/Lei_MD-<version>.exe (onefile), where <version> is read
+    # from pyproject.toml.
 
 .EXAMPLE
     pwsh scripts/build-windows.ps1 -WithInstaller
-    # Also builds installer/Lei_MD-0.4.1-Setup.exe
+    # Also builds installer/Lei_MD-<version>-Setup.exe
 
 .NOTES
     Run on Windows 11 with Python 3.10-3.13 and PyInstaller 6.x.
@@ -51,7 +54,15 @@ $InstallerScript = Join-Path $InstallerDir 'installer.nsi'
 $VenvDir     = Join-Path $ProjectRoot '.venv-build'
 
 $AppName    = 'Lei_MD'
-$AppVersion = '0.4.1'
+
+# Single source of truth: read version from pyproject.toml.
+# `python -c "..."` is the most portable cross-platform reader we have
+# (works on Windows + Linux + macOS), and it avoids depending on extra
+# PowerShell modules like powershell-yaml or tomllib-from-PS7-only.
+$AppVersion = (& python -c "import tomllib, sys; print(tomllib.load(open(sys.argv[1],'rb'))['project']['version'])" (Join-Path $ProjectRoot 'pyproject.toml')).Trim()
+if (-not ($AppVersion -match '^\d+\.\d+\.\d+([.-].+)?$')) {
+    throw "Could not parse a semver-like version from pyproject.toml: '$AppVersion'"
+}
 $ExeName    = "$AppName-$AppVersion.exe"
 
 # ──────────────────────────────────────────────────────────────────────
@@ -149,7 +160,7 @@ if ($WithInstaller) {
         Write-Host "    NSIS:       $makensis"
         Push-Location $InstallerDir
         try {
-            & $makensis $InstallerScript
+            & $makensis /DAPP_VERSION="$AppVersion" $InstallerScript
             if ($LASTEXITCODE -ne 0) { throw "makensis failed" }
         } finally {
             Pop-Location

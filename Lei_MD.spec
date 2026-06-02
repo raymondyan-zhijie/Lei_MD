@@ -1,4 +1,3 @@
-# -*- mode: python ; coding: utf-8 -*-
 """PyInstaller spec for Lei_MD.
 
 Build a single-file Windows executable that bundles:
@@ -7,29 +6,29 @@ Build a single-file Windows executable that bundles:
 - PySide6 Qt runtime
 - markitdown[all] + transitive deps (pdf, docx, xlsx, pptx, image, ...)
 
-Output: dist/Lei_MD-0.4.1.exe (~30-60 MB onefile)
+Output: dist/Lei_MD-<version>.exe (~30-60 MB onefile)
 
 Build:
     pyinstaller Lei_MD.spec
 or
     pwsh scripts/build-windows.ps1  # recommended (handles venv + cleanup)
-
-For the v0.4.1 release, the executable is uploaded to:
-    https://github.com/raymondyan-zhijie/Lei_MD/releases/tag/v0.4.1
 """
 
 from pathlib import Path
-import sys
+
+import tomllib
 
 # ──────────────────────────────────────────────────────────────────────
-# Project metadata (kept in sync with pyproject.toml + src/__init__.py)
+# Project metadata — version is read from pyproject.toml (single source
+# of truth). The build script does the same so the two stay in lockstep.
 # ──────────────────────────────────────────────────────────────────────
 APP_NAME = "Lei_MD"
-APP_VERSION = "0.4.1"
+_PYPROJECT = Path(__file__).resolve().parent / "pyproject.toml"
+APP_VERSION = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))["project"]["version"]
 ENTRY = "src/main.py"
 ICON = "src/resources/icons/app.ico"  # see "Icon note" below
 
-# Icon note: v0.4.1 ships without an .ico; PyInstaller will fall back to
+# Icon note: ships without an .ico; PyInstaller will fall back to
 # the system default exe icon. To add a custom icon:
 #   1. Drop a 256x256 .ico at src/resources/icons/app.ico
 #   2. Uncomment the `icon=` line in the EXE() block below
@@ -136,13 +135,13 @@ exe = EXE(
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,    # current arch (x86_64 for windows-latest)
-    codesign_identity=None,        # v0.4.x: no signing (SmartScreen will warn)
+    codesign_identity=None,        # no signing in v0.4.x (SmartScreen will warn)
     entitlements_file=None,
     # icon=ICON,  # uncomment when app.ico exists
 )
 
 # Note: OneDir vs OneFile
-# - We use OneFile (above) for v0.4.1 because the user wants a single
-#   ``Lei_MD-0.4.1.exe`` they can copy to any Windows machine.
+# - We use OneFile (above) because the user wants a single
+#   ``Lei_MD-<version>.exe`` they can copy to any Windows machine.
 # - For a faster startup, switch to COLLECT() + EXE() (OneDir) — the
 #   build script `scripts/build-windows.ps1` supports both via a flag.

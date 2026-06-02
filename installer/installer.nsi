@@ -1,15 +1,18 @@
 ; NSIS installer script for Lei_MD
-; Builds a Windows installer (Lei_MD-0.4.1-Setup.exe) that:
-; - Installs Lei_MD-0.4.1.exe to $PROGRAMFILES64\Lei_MD\
+; Builds a Windows installer (Lei_MD-<version>-Setup.exe) that:
+; - Installs Lei_MD-<version>.exe to $PROGRAMFILES64\Lei_MD\
 ; - Adds Start Menu + Desktop shortcuts
 ; - Adds uninstall entry to "Add/Remove Programs"
 ; - Detects existing installation and offers upgrade
 ;
-; Build:
-;     makensis installer.nsi
-;     # → Lei_MD-0.4.1-Setup.exe  (~30 MB)
+; The version is passed in at compile time via /DAPP_VERSION=x.y.z so the
+; build script can keep pyproject.toml as the single source of truth.
 ;
-; Or via the build script:
+; Build:
+;     makensis /DAPP_VERSION=0.4.2 installer.nsi
+;     # → Lei_MD-0.4.2-Setup.exe  (~30 MB)
+;
+; Or via the build script (version is read from pyproject.toml):
 ;     pwsh scripts/build-windows.ps1 -WithInstaller
 
 !include "MUI2.nsh"
@@ -20,11 +23,13 @@
 ; Metadata
 ; ──────────────────────────────────────────────────────────────────────
 !define APP_NAME     "Lei_MD"
-!define APP_VERSION  "0.4.1"
+!ifndef APP_VERSION
+    !error "APP_VERSION is not defined. Pass /DAPP_VERSION=x.y.z to makensis (build-windows.ps1 does this automatically)."
+!endif
 !define APP_PUBLISHER "leimengde"
 !define APP_EXE      "${APP_NAME}-${APP_VERSION}.exe"
 !define APP_DIR      "${APP_NAME}"
-!define UNINST_KEY   "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
+!define UNINST_KEY   "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${APP_NAME}"
 
 Name "${APP_NAME} ${APP_VERSION}"
 OutFile "Lei_MD-${APP_VERSION}-Setup.exe"

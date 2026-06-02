@@ -63,6 +63,9 @@ def test_settings_dialog_accept_persists_changes(qtbot, config_in_tmp):
     dlg.language_combo.setCurrentText("zh_CN")
     dlg.theme_combo.setCurrentText("dark")
     dlg.batch_concurrency_spin.setValue(8)
+    # v0.4.4+ LLM widget 禁用；测试要写入必须临时启用。
+    # 这里测的是"v0.4.3 旧 config 加载 llm_model 字段能 round-trip"，跟 UI 无关。
+    dlg.llm_model_edit.setEnabled(True)  # 临时启用用于测试
     dlg.llm_model_edit.setText("gpt-4o-mini")
 
     # 模拟 accept
@@ -119,6 +122,10 @@ def test_settings_dialog_has_all_field_widgets(qtbot, config_in_tmp):
     assert isinstance(dlg.llm_api_base_edit, QLineEdit)
     assert isinstance(dlg.llm_api_key_edit, QLineEdit)
     assert isinstance(dlg.llm_model_edit, QLineEdit)
+    # v0.4.4+ LLM 字段 deprecated：widget 保留但禁用
+    assert dlg.llm_api_base_edit.isEnabled() is False
+    assert dlg.llm_api_key_edit.isEnabled() is False
+    assert dlg.llm_model_edit.isEnabled() is False
 
     # ComboBox 选项
     def opts(c):

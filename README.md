@@ -19,9 +19,8 @@
 | 💾 **导出文件** | 导出为 .md 文件（UTF-8） |
 | 🎨 **深色模式** | 跟随 Windows 系统主题自动切换 |
 | 🌏 **双语界面** | 中文 / English |
-| 🤖 **LLM 图片描述** | 可选 OpenAI 兼容 API，为图片生成文字描述 |
 | 📜 **历史记录** | SQLite 存储，自动保留最近 50 条 |
-| 🔒 **完全离线** | 安装后不联网，配置/历史存本地 |
+| 🔒 **本地优先** | 默认不联网；可联网功能仅 YouTube 字幕抓取（v0.4.0+）|
 | ⚠️ **错误码体系** | 5 大类错误码（E_FILE / E_CONVERT / E_SYS / E_INTERNAL / E_UPDATE），全部带回归测试 |
 
 ## 📦 支持的格式（v1.0）
@@ -30,7 +29,7 @@
 |------|------|
 | 📄 文档 | PDF · DOCX · DOC · PPTX · PPT · XLSX · XLS · EPUB |
 | 🌐 文本 | HTML · HTM · CSV · JSON · XML · TXT · MD |
-| 🖼 图片 | JPG · JPEG · PNG · GIF · BMP · WEBP（可选 LLM 描述） |
+| 🖼 图片 | JPG · JPEG · PNG · GIF · BMP · WEBP |
 | 📦 压缩 | ZIP |
 | ❌ **v1.0 不支持** | MP3 · WAV · OGG · FLAC（计划 v1.1+ 离线实现） |
 

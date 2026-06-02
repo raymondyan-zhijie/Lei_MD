@@ -9,7 +9,8 @@
 设计：
 - 单实例化（Converter 实例共享 MarkItDown 引擎，03 § 注：避免每个文件重新初始化插件/缓存）
 - SUPPORTED 扩展名集合与 DropArea 对齐（ drop_area.py）
-- 可选 LLM api_key（ + 图片描述，F8）
+- v0.4.4+：LLM 图片描述已撤场（converter 不再接受 llm_api_key）——
+  v0.5.0 真实现时再加。settings dialog 中相应字段 disabled
 - MarkItDown 引擎不是线程安全的；构造延迟到首次
   convert()/clone_for_thread()，batch 场景下每个 runnable 通过 clone_for_thread()
   获得独立实例，避免共享 MarkItDown 内部状态/锁
@@ -40,13 +41,12 @@ class MarkItDownConverter:
     SUPPORTED = SUPPORTED_EXTENSIONS
     MAX_FILE_SIZE = MAX_FILE_SIZE_BYTES
 
-    def __init__(self, llm_api_key: str | None = None):
+    def __init__(self):
         """初始化。
 
-        Args:
-            llm_api_key: 可选 LLM API Key（用于图片描述， 功能）
+        v0.4.4+：移除 ``llm_api_key`` 参数。LLM 图片描述功能撤场；
+        如未来要加，参考 git history 加回参数 + 在 settings dialog 启用。
         """
-        self.llm_api_key = llm_api_key
         # MarkItDown 引擎延迟到首次 convert()/clone_for_thread()
         # 构造，避免 __init__ 阶段就创建不可重入的内部状态。原 _md 是在 __init__ 直接
         # 构造的，导致 BatchWorker 多个 _ConvertRunnable 共享同一 MarkItDown 实例，
@@ -62,7 +62,6 @@ class MarkItDownConverter:
         """
         if self._md is None:
             # enable_plugins=False 避免未声明的第三方插件注入
-            # 如需 LLM 图片描述，应在调用前 monkey patch llm_client
             self._md = MarkItDown(enable_plugins=False)
         return self._md
 
@@ -71,9 +70,9 @@ class MarkItDownConverter:
 
         BatchWorker._ConvertRunnable 在 run() 入口调用本方法，让每个
         worker 线程持有自己的 MarkItDown 引擎，避免共享同一实例带来的
-        非可重入锁 / 内部缓存状态污染。llm_api_key 透传，保证语义一致。
+        非可重入锁 / 内部缓存状态污染。
         """
-        clone = MarkItDownConverter(llm_api_key=self.llm_api_key)
+        clone = MarkItDownConverter()
         # 各自构造 MarkItDown（不等首次 convert() 触发）
         clone._md = MarkItDown(enable_plugins=False)
         return clone

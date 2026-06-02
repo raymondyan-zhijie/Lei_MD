@@ -64,7 +64,9 @@ class AppConfig:
     # 性能
     batch_concurrency: int = 4          # 批量并行
 
-    # LLM 图片描述（ ，可选）
+    # LLM 图片描述（v0.4.4 deprecated：功能未实现，UI 禁用）
+    # 字段保留只为 v0.4.3 旧 config 加载兼容（不丢用户历史 API key 字符串）。
+    # v0.5.0+ 真实现时再用；届时清空这些字段不会让旧 config 崩。
     llm_api_base: str = ""
     llm_api_key: str = ""
     llm_model: str = "gpt-4o"

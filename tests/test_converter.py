@@ -107,8 +107,13 @@ def test_converter_handles_markitdown_exception(tmp_path, monkeypatch):
     assert exc.value.code == ErrorCode.E_CONVERT_001
 
 
-def test_converter_passes_llm_api_key_when_provided(converter, tmp_path, monkeypatch):
-    """提供 llm_api_key 时传给 MarkItDown。"""
+def test_converter_no_llm_api_key_param_v044(converter, tmp_path, monkeypatch):
+    """v0.4.4+：LLM 图片描述已撤场，converter 不再接受 llm_api_key 参数。
+
+    这个测试是 v0.4.3 之前 ``test_converter_passes_llm_api_key_when_provided``
+    的替代：v0.4.4 移除参数后，调用 ``MarkItDownConverter(llm_api_key=...)``
+    会 TypeError；反之 ``MarkItDownConverter()`` 正常工作。
+    """
     pdf = tmp_path / "test.pdf"
     pdf.write_bytes(b"%PDF-1.4\n")
     mock_md = MagicMock()
@@ -116,11 +121,11 @@ def test_converter_passes_llm_api_key_when_provided(converter, tmp_path, monkeyp
     monkeypatch.setattr("src.core.converter.MarkItDown", lambda **kwargs: mock_md)
     monkeypatch.setattr("os.path.getsize", lambda p: 100)
 
-    converter_llm = converter.__class__(llm_api_key="sk-test")
-    converter_llm.convert(str(pdf))
+    # 1. v0.4.4+ 无参构造 OK
+    c = converter.__class__()
+    md = c.convert(str(pdf))
+    assert md == "# x"
 
-    # MarkItDown 被调用时 args 应含 llm 相关参数
-    init_kwargs = mock_md.__class__  # noqa
-    # 检查 MarkItDown() 调用本身接受了 enable_plugins 或 llm 参数
-    # (实际 markitdown API: MarkItDown(llm_client=...))
-    # 简化为：检查 converter 内部不抛异常
+    # 2. 传 llm_api_key= 必须 TypeError（参数已删）
+    with pytest.raises(TypeError):
+        converter.__class__(llm_api_key="sk-test")

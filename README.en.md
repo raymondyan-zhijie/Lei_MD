@@ -19,10 +19,9 @@ Drag a file → auto-convert → live preview → one-click export. **Let non-te
 | 💾 **Export to file** | Export as `.md` file (UTF-8) |
 | 🎨 **Dark mode** | Follows Windows system theme automatically |
 | 🌏 **Bilingual UI** | 中文 / English |
-| 🤖 **LLM image description** | Optional OpenAI-compatible API for image alt text |
-| 📜 **History** | SQLite storage, keeps the latest 50 records |
-| 🔒 **Fully offline** | No network access after install; config & history stay local |
-| ⚠️ **Error code system** | 5 error categories (E_FILE / E_CONVERT / E_SYS / E_INTERNAL / E_UPDATE), all with regression tests |
+| 📜 **History** | SQLite-backed, keeps the last 50 entries |
+| 🔒 **Local-first** | Offline by default; the only network feature is YouTube subtitle fetching (v0.4.0+) |
+| ⚠️ **Error code system** | 5 categories (E_FILE / E_CONVERT / E_SYS / E_INTERNAL / E_UPDATE), all with regression tests |
 
 ## 📦 Supported Formats (v1.0)
 
@@ -30,7 +29,7 @@ Drag a file → auto-convert → live preview → one-click export. **Let non-te
 |------|------|
 | 📄 Documents | PDF · DOCX · DOC · PPTX · PPT · XLSX · XLS · EPUB |
 | 🌐 Text | HTML · HTM · CSV · JSON · XML · TXT · MD |
-| 🖼 Images | JPG · JPEG · PNG · GIF · BMP · WEBP (optional LLM description) |
+| 🖼 Images | JPG · JPEG · PNG · GIF · BMP · WEBP |
 | 📦 Archives | ZIP |
 | ❌ **Not in v1.0** | MP3 · WAV · OGG · FLAC (planned for v1.1+, offline) |
 

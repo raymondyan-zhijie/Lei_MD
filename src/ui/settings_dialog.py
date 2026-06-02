@@ -93,7 +93,12 @@ class SettingsDialog(QDialog):
         self.batch_concurrency_spin = QSpinBox()
         self.batch_concurrency_spin.setRange(1, 8)
 
-        # LLM
+        # LLM（v0.4.4 deprecated：功能未实现，整个 group 禁用 + 灰化）
+        # 字段+widget 保留只为：
+        # 1. v0.4.3 旧 config 加载不丢 llm_api_key 字符串
+        # 2. load()/save() 路径不崩
+        # 用户看到这 3 个 widget 是灰色 + 顶部标签写"未实现"，
+        # 不会被诱导去填。v0.5.0 真实现时再 setEnabled(True)。
         self.llm_api_base_edit = QLineEdit()
         self.llm_api_base_edit.setPlaceholderText("https://api.openai.com/v1")
         self.llm_api_key_edit = QLineEdit()
@@ -101,6 +106,12 @@ class SettingsDialog(QDialog):
         self.llm_api_key_edit.setPlaceholderText("（密码隐藏）")
         self.llm_model_edit = QLineEdit()
         self.llm_model_edit.setPlaceholderText("gpt-4o")
+        for w in (
+            self.llm_api_base_edit,
+            self.llm_api_key_edit,
+            self.llm_model_edit,
+        ):
+            w.setEnabled(False)  # v0.4.4+ 禁用
 
         # 按钮
         self.reset_button = QPushButton("恢复默认")
@@ -142,13 +153,13 @@ class SettingsDialog(QDialog):
         root.addWidget(QLabel("── 界面 ──"))
         root.addWidget(ui_group)
 
-        # LLM
+        # LLM（v0.4.4 deprecated：未实现。group 仍渲染但 widget 全 setEnabled(False)）
         llm_group = QWidget()
         llm_form = QFormLayout(llm_group)
         llm_form.addRow("LLM API Base：", self.llm_api_base_edit)
         llm_form.addRow("LLM API Key：", self.llm_api_key_edit)
         llm_form.addRow("LLM Model：", self.llm_model_edit)
-        root.addWidget(QLabel("── LLM 图片描述（ ，可选）──"))
+        root.addWidget(QLabel("── LLM 图片描述（v0.4.4+ 未实现，配置项保留兼容）──"))
         root.addWidget(llm_group)
 
         # 按钮行

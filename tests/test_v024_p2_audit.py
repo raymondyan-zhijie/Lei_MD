@@ -96,16 +96,17 @@ def test_converter_translates_oserror_not_misclassified_as_corrupt(converter, tm
 
 
 def test_clone_for_thread_returns_independent_instance():
-    """M3.8: clone_for_thread() 返回新对象，与原对象不是同一个。"""
+    """M3.8: clone_for_thread() 返回新对象，与原对象不是同一个。
+
+    v0.4.4+：LLM 参数已移除，构造改成无参。
+    """
     from src.core.converter import MarkItDownConverter
 
-    orig = MarkItDownConverter(llm_api_key="sk-test")
+    orig = MarkItDownConverter()
     clone = orig.clone_for_thread()
     # 是新实例，不是 orig 本身
     assert clone is not orig
     assert isinstance(clone, MarkItDownConverter)
-    # llm_api_key 透传
-    assert clone.llm_api_key == "sk-test"
 
 
 def test_clone_for_thread_gives_independent_markitdown_engine(monkeypatch):

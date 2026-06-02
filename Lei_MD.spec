@@ -30,13 +30,13 @@ APP_NAME = "Lei_MD"
 _PYPROJECT = Path(SPECPATH) / "pyproject.toml"
 APP_VERSION = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))["project"]["version"]
 ENTRY = "src/main.py"
-ICON = "src/resources/icons/app.ico"  # see "Icon note" below
-
-# Icon note: ships without an .ico; PyInstaller will fall back to
-# the system default exe icon. To add a custom icon:
+# ICON is intentionally unset in v0.4.5 — no .ico file ships yet (see
+# spec "Icon note" comment below). PyInstaller will fall back to the
+# system default exe icon. To add a custom icon:
 #   1. Drop a 256x256 .ico at src/resources/icons/app.ico
 #   2. Uncomment the `icon=` line in the EXE() block below
-#   3. Add `('src/resources/icons/app.ico', 'resources/icons')` to datas
+#   3. Add `('src/resources/icons', 'resources/icons')` to datas AND
+#      create the directory with a .gitkeep so the source path exists.
 
 # ──────────────────────────────────────────────────────────────────────
 # Hidden imports (modules PyInstaller can't auto-detect)
@@ -76,7 +76,9 @@ hiddenimports = [
 datas = [
     # (source, dest-dir-in-bundle)
     ("src/resources/locales", "resources/locales"),
-    ("src/resources/icons",   "resources/icons"),
+    # NOTE: src/resources/icons intentionally NOT bundled yet — no
+    # .ico file ships in v0.4.5. See ICON comment above for the steps
+    # to enable it (and remember to create the dir + .gitkeep first).
     # README / LICENSE displayed in About box (optional)
     # ("README.md",    "."),
     # ("LICENSE",      "."),

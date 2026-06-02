@@ -1,13 +1,17 @@
 [project]
 name = "lei-md"
-version = "0.4.1"
+version = "0.4.2"
 description = "Windows GUI for Microsoft MarkItDown - convert files to Markdown with drag & drop, offline and all-in-one"
 authors = [{name = "leimengde"}]
 license = {text = "MIT"}
 requires-python = ">=3.10,<3.14"
 dependencies = [
     "markitdown[all]>=0.1.0,<0.2.0",
-    "PySide6>=6.7,<7.0",
+    # v0.4.2 P2 fix：PySide6 6.11 + Python 3.12 触发 pytest-qt _process_events
+    # 的 Fatal Python error: Aborted（QDragEnterEvent 路径 segfault）。
+    # 之前测试在 6.9.x 全绿，6.10+ 引入该问题。临时收紧到 <6.11，等
+    # 上游修再放开（issue: https://bugreports.qt.io/ PYSIDE-2845 类似）。
+    "PySide6>=6.7,<6.11",
     "darkdetect>=0.8,<0.9",
     "markdown>=3.6,<4.0",
     "Pygments>=2.18,<3.0",

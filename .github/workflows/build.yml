@@ -113,14 +113,20 @@ jobs:
         run: |
           # A tag push alone does NOT create a release — `gh release upload`
           # would fail with "release not found" if we don't create it first.
-          # `gh release create` is idempotent in this context because of the
-          # `2>&1 | Select-String` filter that swallows "already exists".
+          # Use `gh release view` as a pre-check so this step is fully idempotent
+          # against releases created manually via the GitHub API.
           $tag = $env:GITHUB_REF_NAME
-          gh release create $tag `
-            --title "Lei_MD $tag" `
-            --generate-notes `
-            --draft=false 2>&1 | Select-String -NotMatch 'already exists' | ForEach-Object { Write-Host $_ }
-
+          $existing = gh release view $tag --json name 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag already exists — skipping create"
+          } else {
+            Write-Host "Creating release $tag"
+            gh release create $tag `
+              --title "Lei_MD $tag" `
+              --generate-notes `
+              --draft=false
+          }
+          
       - name: Upload .exe to GitHub Release (tag push only)
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh

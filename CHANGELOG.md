@@ -385,3 +385,45 @@ Worker 异步转换接入 MainWindow。**44/44 测试绿灯**（v0.1.0 的 36 + 
 - 离线 + 大而全 + 传统安装包路线（400-500MB 单安装包）
 - 应用内「检查更新」+ GitHub Releases 主渠道
 - SemVer + Dependabot 自动依赖更新策略
+
+## [0.4.5] - 2026-06-02
+
+v0.4.4 之后的小型治理 patch — **审核收口 11 项**。**275/275 测试绿**。**CI #20 8/8 绿**。
+
+### Fixed (P0)
+
+- **A1 (428dca2)** main_window.py 删 5 处冗余 `from PySide6.QtWidgets import QMessageBox`（顶层已 import）
+- **D1/D2/D3 (428dca2)** SettingsDialog 全 i18n 化（之前完全硬编码中文，R4-6 live lang switch 半成品）：
+  - 窗口标题 / 3 个按钮 / 4 个 group title 全部走 i18n
+  - JSON +3 键：settings.group.output / capacity / ui
+
+### Fixed (P1)
+
+- **A3 (83f9f91)** i18n.py docstring 修复（"i18n for Lei_MD — ." 损坏）
+- **B1 (83f9f91)** 删"让旧 import 路径下的 _tr() 行为不变"错误注释
+- **D5 (83f9f91)** YouTube 3 个 QMessageBox 文案走 i18n（fetch_title / empty_url / invalid_url / fetch_failed_title / fetch_failed_error_code）
+- **D6 (83f9f91)** DropArea DEFAULT_PLACEHOLDER 4 行硬编码拆 3 个 i18n 键（drop.placeholder.lead / formats / audio_note）
+
+### Fixed (P2)
+
+- **A2 (8f4bb1f)** `reload_language` 从「生命周期」段移到「公开 API」段，定位更准
+- **A4 (8f4bb1f)** 主菜单 5 项 + 工具栏 3 项 + 5 个对话框（导出/复制/历史/关于/音频拒绝）走 i18n
+- **C1 (8f4bb1f)** README.md / README.en.md「双语界面」行加 v0.4.5 提示
+- **C2 (8f4bb1f)** docs/02-architecture.en.md §5.1+5.2 重写（VALID_LOCALES 改 frozenset / system trigger / locale 解析链）
+
+### Skipped
+
+- **C3** docs/07-build-release.md 是操作手册不是 changelog，无需改
+- **E1** AppConfig.language 拆 use_system_locale 字段（去双触发器）— 留 v0.5.0+ 单独 commit（破坏现有 config schema）
+
+### Verified
+
+- ✅ 275/275 测试绿（v0.4.4 → v0.4.5: +0，2 个测试放宽接受双语）
+- ✅ ruff 0 errors
+- ✅ CI #20 8/8 矩阵绿
+- ✅ origin/main = 8f4bb1f 二次验证
+- ✅ release id 333073483
+
+### i18n 键增长
+
+v0.4.3 (71) → v0.4.4 (75, +4) → **v0.4.5 (100, +25)**

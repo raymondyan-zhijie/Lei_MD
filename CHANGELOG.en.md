@@ -385,3 +385,45 @@ First runnable MVP. Sprint 1 (Task 1.1-1.7) complete, 36/36 tests green.
 - Offline + all-in-one + traditional installer roadmap (400-500MB single installer)
 - In-app "Check for Updates" + GitHub Releases as main channel
 - SemVer + Dependabot automatic dependency update strategy
+
+## [0.4.5] - 2026-06-02
+
+Small governance patch after v0.4.4 — **closes 11 audit items**. **275/275 tests green**. **CI #20 8/8 green**.
+
+### Fixed (P0)
+
+- **A1 (428dca2)** Remove 5 redundant `from PySide6.QtWidgets import QMessageBox` in main_window.py (already imported at top)
+- **D1/D2/D3 (428dca2)** SettingsDialog fully i18n-ized (was 100% hardcoded Chinese — R4-6 live lang switch was half-baked):
+  - window title / 3 buttons / 4 group titles all go through tr()
+  - JSON +3 keys: settings.group.output / capacity / ui
+
+### Fixed (P1)
+
+- **A3 (83f9f91)** Fix i18n.py docstring ("i18n for Lei_MD — ." was broken)
+- **B1 (83f9f91)** Delete wrong "old import path" comment
+- **D5 (83f9f91)** YouTube 3 QMessageBox dialogs i18n (fetch_title / empty_url / invalid_url / fetch_failed_title / fetch_failed_error_code)
+- **D6 (83f9f91)** DropArea DEFAULT_PLACEHOLDER 4 hardcoded lines split into 3 i18n keys (drop.placeholder.lead / formats / audio_note)
+
+### Fixed (P2)
+
+- **A2 (8f4bb1f)** `reload_language` moved from "Lifecycle" section to "Public API" section
+- **A4 (8f4bb1f)** Main menu 5 items + toolbar 3 items + 5 dialogs (export/copy/history/about/audio-rejected) all i18n
+- **C1 (8f4bb1f)** README.md / README.en.md "Bilingual UI" row updated with v0.4.5 note
+- **C2 (8f4bb1f)** docs/02-architecture.en.md §5.1+5.2 rewritten (VALID_LOCALES → frozenset, system trigger, locale resolution chain)
+
+### Skipped
+
+- **C3** docs/07-build-release.md is an ops manual, not a changelog — no change needed
+- **E1** Splitting AppConfig.language into use_system_locale field (removing dual-trigger design) — deferred to v0.5.0+ (would break existing config schema)
+
+### Verified
+
+- ✅ 275/275 tests green (v0.4.4 → v0.4.5: +0, 2 tests broadened to accept bilingual)
+- ✅ ruff 0 errors
+- ✅ CI #20 8/8 matrix green
+- ✅ origin/main = 8f4bb1f double-verified
+- ✅ release id 333073483
+
+### i18n key growth
+
+v0.4.3 (71) → v0.4.4 (75, +4) → **v0.4.5 (100, +25)**

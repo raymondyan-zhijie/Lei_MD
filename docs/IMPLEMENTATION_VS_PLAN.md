@@ -1,9 +1,9 @@
-# 规划 vs 实施 对照表（v0.3.0 截止）
+# 规划 vs 实施 对照表（v0.4.5 截止）
 
-> **生成日期：** 2026-06-02  
-> **基线版本：** v0.3.0（157/157 绿）  
-> **对比对象：** 6 份初始规划文档（[01-requirements](01-requirements.md) / [02-architecture](02-architecture.md) / [03-development-plan](03-development-plan.md) / [04-testing-plan](04-testing-plan.md) / [05-release-plan](05-release-plan.md) / [06-dependency-update-strategy](06-dependency-update-strategy.md)）  
-> **实施记录源：** [CHANGELOG.md](../CHANGELOG.md) v0.1.0 / v0.2.0 / v0.3.0 三段
+> **生成日期：** 2026-06-02
+> **基线版本：** v0.4.5（275/275 绿）
+> **对比对象：** 6 份初始规划文档（[01-requirements](01-requirements.md) / [02-architecture](02-architecture.md) / [03-development-plan](03-development-plan.md) / [04-testing-plan](04-testing-plan.md) / [05-release-plan](05-release-plan.md) / [06-dependency-update-strategy](06-dependency-update-strategy.md)）
+> **实施记录源：** [CHANGELOG.md](../CHANGELOG.md) v0.1.0 / v0.2.0 / v0.3.0 / v0.4.0 / v0.4.1 / v0.4.2 / v0.4.3 / v0.4.4 / v0.4.5 九段
 
 ---
 

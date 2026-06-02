@@ -1,7 +1,7 @@
 # Lei_MD
 
 > 🪟 **Windows 桌面版文件转 Markdown 工具** — 基于 [Microsoft MarkItDown](https://github.com/microsoft/markitdown) (⭐ 136,328)
-> **大而全 · 完全离线 · 传统安装程序**
+> **大而全 · 本地优先 · 传统安装程序**
 
 > 🌐 **Language**: **中文** | [English](README.en.md)
 

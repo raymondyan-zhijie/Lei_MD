@@ -1,7 +1,7 @@
 # Lei_MD
 
 > 🪟 **Windows desktop file-to-Markdown tool** — based on [Microsoft MarkItDown](https://github.com/microsoft/markitdown) (⭐ 136,328)
-> **All-in-one · Fully offline · Traditional installer**
+> **All-in-one · Local-first · Traditional installer**
 
 > 🌐 **Language**: [中文](README.md) | **English**
 

@@ -51,7 +51,7 @@
 
 **v1.0 decision**: **Do not introduce**; keep QTextBrowser. Reasons:
 1. Violates NF3 "all-in-one single installer ~400-500MB" (adding 100MB more = 550-650MB)
-2. Violates the "fully offline" security posture (Chromium is an attack surface even with network disabled)
+2. Violates the "local-first" security posture (Chromium is an attack surface even with network disabled)
 
 ## 2. System Architecture Overview
 

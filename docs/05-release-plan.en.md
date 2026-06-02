@@ -154,7 +154,7 @@ Download Setup.exe → install → drop a file → get Markdown
 - 📋 One-click copy to clipboard / export .md file
 - 🎨 Dark mode
 - 🌏 Chinese & English UI
-- 🔒 Fully offline, no network, no data upload
+- 🔒 Local-first: no network or data upload during everyday use (a few features like YouTube transcript fetching need network)
 
 ## Unsupported formats (v1.0)
 - Audio (MP3 / WAV / OGG / FLAC) — see [01-requirements.md F9a](01-requirements.md)

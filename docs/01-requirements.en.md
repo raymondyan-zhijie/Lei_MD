@@ -72,7 +72,7 @@ This project (**Lei_MD**) builds a **comprehensive, offline-capable Windows nati
 ## 4. Constraints
 
 - **Depends on MarkItDown library**: Core conversion capability is provided by the upstream library; this project is only a GUI wrapper
-- **Comprehensive + offline**: Single installer bundles all 20+ format dependencies, **fully offline**, no network required from the user
+- **Comprehensive + local-first**: Single installer bundles all 20+ format dependencies, **runs local-first** (a few features like YouTube transcript fetching need network), no network required for everyday use
 - **Must work on Windows**: Use PyInstaller + NSIS to package as a standard Windows installer
 - **MIT license compliance**: This project (Lei_MD) is an **independently MIT-licensed** GUI wrapper, distributed separately from upstream MarkItDown (MIT) but with compatible licensing; both copyright notices must be preserved. SPDX identifier: see [LICENSE](../LICENSE)
 - **Python ecosystem**: GUI framework limited to Python ecosystem (PySide6), reducing maintenance cost

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from PySide6.QtWidgets import QApplication
 
-from src.ui.styles import ThemeManager, apply_theme, is_system_dark
+from src.ui.styles import apply_theme, is_system_dark
 
 
 def _ensure_qapp():

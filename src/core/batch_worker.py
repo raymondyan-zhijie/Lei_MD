@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import threading
-from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import (
@@ -178,7 +177,8 @@ class BatchWorker(QObject):
         """协作式取消：不再 dispatch 新任务，已跑的继续。
 
         注：finished 只在所有路径（包括未跑的）都"结算"后发。
-        这里把剩余路径的 done_count 补齐，让 finished 触发。 ：cancel() 允许在 IDLE 或 RUNNING 调用，
+        这里把剩余路径的 done_count 补齐，让 finished 触发。
+        说明：cancel() 允许在 IDLE 或 RUNNING 调用，
         已处于 CANCELLED/FINISHED 时是 no-op（不重复进入 finalize 路径）。
         """
         # ：状态守卫

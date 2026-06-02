@@ -10,7 +10,6 @@ from src.core.youtube import (
     is_youtube_url,
 )
 
-
 # ============ URL 解析 ============
 
 
@@ -97,10 +96,10 @@ class TestFetchErrors:
 
     def test_ytdlp_missing_raises_003(self, monkeypatch):
         """E_CONVERT_003: yt-dlp 未安装时 import 失败"""
-        from src.core.youtube import fetch_youtube_transcript
-
         # 把 yt_dlp 强制设为导入失败
         import builtins
+
+        from src.core.youtube import fetch_youtube_transcript
         real_import = builtins.__import__
 
         def fake_import(name, *args, **kwargs):

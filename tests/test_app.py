@@ -6,9 +6,6 @@
 - 组织名为 "leimengde"
 - LeiMDApp 不重复创建 QApplication
 """
-import pytest
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
 
 
 def test_application_name_is_lei_md(qapp):

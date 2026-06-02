@@ -4,8 +4,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
 
 from src.core.batch_worker import BatchWorker
 from src.core.config import ConfigManager

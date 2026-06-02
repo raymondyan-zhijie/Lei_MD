@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ YOUTUBE_URL_PATTERNS: tuple[re.Pattern[str], ...] = (
 PREFERRED_SUB_LANGS: tuple[str, ...] = ("zh-Hans", "zh-CN", "zh-Hant", "zh-TW", "en", "en-US")
 
 
-def extract_video_id(url: str) -> Optional[str]:
+def extract_video_id(url: str) -> str | None:
     """从 YouTube URL 提取 11 位 video id。
 
     支持格式：watch?v=、youtu.be/、shorts/、embed/
@@ -61,7 +60,7 @@ def is_youtube_url(url: str) -> bool:
 class YouTubeFetchError(Exception):
     """YouTube 抓取失败（包装底层 yt-dpp 异常，附 user_message）。"""
 
-    def __init__(self, code: str, message: str, *, cause: Optional[BaseException] = None):
+    def __init__(self, code: str, message: str, *, cause: BaseException | None = None):
         self.code = code
         self.message = message
         self.cause = cause
@@ -164,7 +163,7 @@ def fetch_youtube_transcript(url: str, *, timeout: int = 30) -> str:
     return "\n".join(lines)
 
 
-def _pick_best_subtitle(subs: dict) -> Optional[str]:
+def _pick_best_subtitle(subs: dict) -> str | None:
     """从 yt-dlp 的字幕字典里挑最佳语言。
 
     优先级：PREFERRED_SUB_LANGS → 任意可用语言

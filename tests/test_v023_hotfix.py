@@ -1,13 +1,9 @@
 """Regression tests for v0.2.3 P2 audit config fixes (M6.2/M6.3/M6.4)."""
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 import pytest
 
 from src.core.config import AppConfig, ConfigManager
-
 
 # ============ M6.2: 非 dict JSON 不杀启动 ============
 

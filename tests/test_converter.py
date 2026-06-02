@@ -10,9 +10,9 @@
 - 密码保护 PDF / 损坏文件 → 转换错误（不抛 Python traceback）
 - LLM api_key 可选：None 时不传
 """
+from unittest.mock import MagicMock
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture
@@ -58,7 +58,6 @@ def test_converter_rejects_oversized_file(converter, tmp_path, monkeypatch):
     fake = tmp_path / "big.pdf"
     fake.write_bytes(b"%PDF-1.4\n")
     # 用 os.path.getsize mock
-    import src.core.converter as cmod
     monkeypatch.setattr(
         "os.path.getsize",
         lambda p: 501 * 1024 * 1024 if "big" in p else 0
@@ -71,7 +70,6 @@ def test_converter_rejects_oversized_file(converter, tmp_path, monkeypatch):
 def test_converter_calls_markitdown_with_correct_args(tmp_path, monkeypatch):
     """正常 PDF：传给 MarkItDown 的参数正确。"""
     from src.core.converter import MarkItDownConverter
-    from src.core.errors import ErrorCode
 
     pdf = tmp_path / "test.pdf"
     pdf.write_bytes(b"%PDF-1.4\n")

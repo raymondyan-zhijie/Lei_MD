@@ -18,7 +18,6 @@ from unittest.mock import MagicMock
 import pytest
 from PySide6.QtCore import QEventLoop, QTimer
 
-
 # ============ shared fixtures ============
 
 

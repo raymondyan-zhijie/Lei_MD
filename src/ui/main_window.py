@@ -25,12 +25,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSplitter,
     QStatusBar,
-    QWidget,
     QVBoxLayout,
+    QWidget,
 )
-
-# closeEvent 路径下会等 worker 2000ms，超时要 log.warning。
-_log = logging.getLogger(__name__)
 
 from src.core.batch_worker import BatchWorker
 from src.core.config import ConfigManager
@@ -42,6 +39,10 @@ from src.ui.file_list import FileList
 from src.ui.i18n import set_locale
 from src.ui.preview_panel import PreviewPanel
 from src.ui.styles import apply_theme
+
+# closeEvent 路径下会等 worker 2000ms，超时要 log.warning。
+_log = logging.getLogger(__name__)
+
 
 class MainWindow(QMainWindow):
     """Lei_MD 主窗口。"""
@@ -69,14 +70,22 @@ class MainWindow(QMainWindow):
         try:
             apply_theme(self._config.get().theme)
         except Exception:  # noqa: BLE001
-            _log.warning("MainWindow.__init__: apply_theme(%r) failed, fallback to 'system'", self._config.get().theme, exc_info=True)
+            _log.warning(
+                "MainWindow.__init__: apply_theme(%r) failed, fallback to 'system'",
+                self._config.get().theme,
+                exc_info=True,
+            )
             apply_theme("system")
 
         # 应用 i18n（）
         try:
             set_locale(self._config.get().language)
         except Exception:  # noqa: BLE001
-            _log.warning("MainWindow.__init__: set_locale(%r) failed, fallback to 'en'", self._config.get().language, exc_info=True)
+            _log.warning(
+                "MainWindow.__init__: set_locale(%r) failed, fallback to 'en'",
+                self._config.get().language,
+                exc_info=True,
+            )
             set_locale("en")
 
         # 菜单栏（）
@@ -129,7 +138,7 @@ class MainWindow(QMainWindow):
         # 当前活跃 worker
         self._active_worker: ConversionWorker | None = None
         # ：批量转换时取消按钮要能取消 batch
-        self._active_batch: "BatchWorker | None" = None
+        self._active_batch: BatchWorker | None = None
 
     # -------- slots --------
 
@@ -145,7 +154,7 @@ class MainWindow(QMainWindow):
         # 只显示前 5 个文件名，避免弹窗过宽
         sample = "\n".join(Path(p).name for p in audio_paths[:5])
         more = f"\n... 还有 {len(audio_paths) - 5} 个" if len(audio_paths) > 5 else ""
-        from src.core.errors import ErrorCode, ERROR_MESSAGES
+        from src.core.errors import ERROR_MESSAGES, ErrorCode
 
         detail = (
             f"以下音频文件不在 v1.0 支持范围：\n\n{sample}{more}\n\n"
@@ -158,7 +167,7 @@ class MainWindow(QMainWindow):
             detail,
             QMessageBox.Ok,
         )
-        log.info("MainWindow rejected %d audio file(s) with E_FILE_006", len(audio_paths))
+        _log.info("MainWindow rejected %d audio file(s) with E_FILE_006", len(audio_paths))
 
     def _on_file_selected(self, path: str) -> None:
         # 取消上一个 worker（如果有）
@@ -247,7 +256,7 @@ class MainWindow(QMainWindow):
 
     # -------- 生命周期（  / ）--------
 
-    def closeEvent(self, event: QCloseEvent) -> None:
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 (Qt event override)
         """窗口关闭：协作式停掉 batch / worker，避免 QThread 被 force-terminate。
 
         顺序（按 spec）：
@@ -270,7 +279,11 @@ class MainWindow(QMainWindow):
             try:
                 self._active_batch.cancel()
             except RuntimeError:  # bw 已 deleteLater()，被 PyQt 哨兵抛出
-                _log.warning("MainWindow.closeEvent: BatchWorker.cancel() raised RuntimeError (对象已 deleteLater)", exc_info=True)
+                _log.warning(
+                    "MainWindow.closeEvent: BatchWorker.cancel() RuntimeError "
+                    "(deleteLater)",
+                    exc_info=True,
+                )
                 pass
 
         # 2) worker 取消（None-safe）
@@ -278,7 +291,11 @@ class MainWindow(QMainWindow):
             try:
                 self._active_worker.cancel()
             except RuntimeError:  # 同上
-                _log.warning("MainWindow.closeEvent: ConversionWorker.cancel() raised RuntimeError (对象已 deleteLater)", exc_info=True)
+                _log.warning(
+                    "MainWindow.closeEvent: ConversionWorker.cancel() RuntimeError "
+                    "(deleteLater)",
+                    exc_info=True,
+                )
                 pass
 
         # 3) 等 QThread 真正结束（最多 2s）
@@ -360,7 +377,11 @@ class MainWindow(QMainWindow):
             try:
                 apply_theme(self._config.get().theme)
             except Exception:  # noqa: BLE001
-                _log.warning("MainWindow._open_settings_dialog: apply_theme(%r) failed", self._config.get().theme, exc_info=True)
+                _log.warning(
+                    "MainWindow._open_settings_dialog: apply_theme(%r) failed",
+                    self._config.get().theme,
+                    exc_info=True,
+                )
                 pass
 
     def _open_history_panel(self) -> None:
@@ -381,7 +402,10 @@ class MainWindow(QMainWindow):
         QMessageBox.about(
             self,
             "关于 Lei_MD",
-            "Lei_MD \n\n基于 MarkItDown 的桌面 GUI 工具\n\n仓库: github.com/raymondyan-zhijie/Lei_MD",
+            (
+                "Lei_MD\n\n基于 MarkItDown 的桌面 GUI 工具\n\n"
+                "仓库: github.com/raymondyan-zhijie/Lei_MD"
+            ),
         )
 
     # -------- 批量转换（）--------

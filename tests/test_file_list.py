@@ -8,10 +8,6 @@
 """
 from __future__ import annotations
 
-import pytest
-
-from src.ui.drop_area import SUPPORTED_EXTENSIONS
-
 
 def test_filelist_starts_empty(qtbot):
     """初始：count() == 0。"""

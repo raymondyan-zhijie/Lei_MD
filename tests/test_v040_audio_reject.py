@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtCore import QMimeData, QPoint, QUrl, Qt
+from PySide6.QtCore import QMimeData, QPoint, Qt, QUrl
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
-from PySide6.QtWidgets import QApplication
 
 from src.ui.drop_area import AUDIO_EXTENSIONS, DropArea
-
 
 # ============ SSOT ============
 

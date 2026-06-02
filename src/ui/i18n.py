@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ class Translator:
 
     def load_file(self, path: Path) -> None:
         """Load translations from a JSON file."""
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             self.load(json.load(f))
 
     def tr(self, key: str) -> str:
@@ -61,9 +60,11 @@ if _default_zh_path.is_file():
     except Exception:  # noqa: BLE001
         log.warning("Failed to load bundled zh_CN translations", exc_info=True)
 
-def set_locale(locale: str, translations: Optional[dict[str, str]] = None) -> Translator:
-    """Set the default locale and optionally load translations. P3 audit: locale 不在 ``VALID_LOCALES`` 白名单时，fallback 到
-    ``DEFAULT_LOCALE``（不再用攻击者控制的字符串拼 ``_LOCALES_DIR / f"{locale}.json"``）。
+def set_locale(locale: str, translations: dict[str, str] | None = None) -> Translator:
+    """Set the default locale and optionally load translations.
+
+    P3 audit: locale 不在 ``VALID_LOCALES`` 白名单时，fallback 到 ``DEFAULT_LOCALE``。
+    （不再用攻击者控制的字符串拼 ``_LOCALES_DIR / f"{locale}.json"``）。
     """
     global _default
     # 白名单：拒绝未授权的 locale 字符串

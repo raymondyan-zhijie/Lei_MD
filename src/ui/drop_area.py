@@ -94,21 +94,21 @@ class DropArea(QLabel):
 
     # -------- Qt 事件 --------
 
-    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802 (Qt event override)
         """拖入时若含文件 URL 则接受。"""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
         else:
             event.ignore()
 
-    def dragMoveEvent(self, event: QDragEnterEvent) -> None:
+    def dragMoveEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802 (Qt event override)
         """拖动过程中持续接受（让 drop 事件能触发）。"""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
         else:
             event.ignore()
 
-    def dropEvent(self, event: QDropEvent) -> None:
+    def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802 (Qt event override)
         """放下时：收集所有支持文件路径，递归展开目录。"""
         if not event.mimeData().hasUrls():
             event.ignore()

@@ -92,7 +92,6 @@ def test_history_panel_double_click_emits_signal(qtbot, history_with_entries):
     # 选第 0 行 + 触发 activated signal
     panel.table_widget.selectRow(0)
     # 用 itemDoubleClicked 信号模拟双击
-    from PySide6.QtCore import QModelIndex
     idx = panel.table_widget.model().index(0, 0)
     panel.table_widget.doubleClicked.emit(idx)
     qtbot.waitUntil(lambda: bool(captured), timeout=1000)

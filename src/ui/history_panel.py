@@ -142,7 +142,11 @@ class HistoryPanel(QWidget):
                 dt = datetime.fromisoformat(e.created_at)
                 time_str = dt.strftime("%Y-%m-%d %H:%M")
             except (ValueError, TypeError):
-                _log.warning("HistoryPanel._populate: bad created_at=%r, showing raw", e.created_at, exc_info=True)
+                _log.warning(
+                    "HistoryPanel._populate: bad created_at=%r, showing raw",
+                    e.created_at,
+                    exc_info=True,
+                )
                 time_str = e.created_at
             cells = [
                 name,

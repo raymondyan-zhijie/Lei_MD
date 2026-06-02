@@ -8,12 +8,10 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from PySide6.QtCore import QCoreApplication, QThread, QTimer
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
 
 from src.core.batch_worker import BatchWorker
 from src.core.config import ConfigManager
-
 
 # ============ H1: chmod 0o600 ============
 

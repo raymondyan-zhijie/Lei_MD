@@ -19,7 +19,6 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Optional
 
 from markitdown import MarkItDown
 
@@ -41,7 +40,7 @@ class MarkItDownConverter:
     SUPPORTED = SUPPORTED_EXTENSIONS
     MAX_FILE_SIZE = MAX_FILE_SIZE_BYTES
 
-    def __init__(self, llm_api_key: Optional[str] = None):
+    def __init__(self, llm_api_key: str | None = None):
         """初始化。
 
         Args:
@@ -53,7 +52,7 @@ class MarkItDownConverter:
         # 构造的，导致 BatchWorker 多个 _ConvertRunnable 共享同一 MarkItDown 实例，
         # 触发潜在的 lock 竞争 / 状态污染。clone_for_thread() 会为每个线程构造
         # 独立 MarkItDown；单线程场景下 _ensure_md() 在首次 convert() 时构造。
-        self._md: Optional[MarkItDown] = None
+        self._md: MarkItDown | None = None
 
     def _ensure_md(self) -> MarkItDown:
         """惰性构造 MarkItDown 引擎（ ）。
@@ -67,7 +66,7 @@ class MarkItDownConverter:
             self._md = MarkItDown(enable_plugins=False)
         return self._md
 
-    def clone_for_thread(self) -> "MarkItDownConverter":
+    def clone_for_thread(self) -> MarkItDownConverter:
         """ 返回带独立 MarkItDown 引擎的新实例。
 
         BatchWorker._ConvertRunnable 在 run() 入口调用本方法，让每个

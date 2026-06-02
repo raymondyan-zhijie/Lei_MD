@@ -8,8 +8,6 @@
 """
 from __future__ import annotations
 
-import pytest
-
 
 def test_mainwindow_has_all_children(qtbot):
     """主窗口包含 DropArea + FileList + PreviewPanel 三个核心子组件。"""

@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+
 class SettingsDialog(QDialog):
     """Lei_MD 设置对话框。"""
 

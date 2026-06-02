@@ -16,6 +16,7 @@ from typing import Any
 
 from PySide6.QtCore import QCoreApplication, QObject, QThread, Signal, Slot
 
+
 def data_dir() -> Path:
     """跨平台数据目录：Windows %APPDATA%，Linux/macOS $XDG_DATA_HOME。
 

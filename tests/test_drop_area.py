@@ -8,9 +8,8 @@
 - 支持的文件扩展名过滤
 """
 import pytest
-from PySide6.QtCore import QMimeData, QPoint, QUrl, Qt
-from PySide6.QtGui import QDragEnterEvent, QDropEvent
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QMimeData, QPoint, Qt, QUrl
+from PySide6.QtGui import QDropEvent
 
 
 @pytest.fixture

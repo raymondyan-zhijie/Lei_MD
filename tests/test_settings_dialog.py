@@ -144,7 +144,7 @@ def test_settings_dialog_reset_to_defaults(qtbot, config_in_tmp):
       setattr live cm，被 cancel 之后留下"半 reset"状态。
     - 磁盘也未变：重新 load 看到原始 en_US。
     """
-    from src.core.config import AppConfig, ConfigManager
+    from src.core.config import ConfigManager
     from src.ui.settings_dialog import SettingsDialog
     cm = config_in_tmp
     cm.update(language="en_US", theme="dark", max_history=200)

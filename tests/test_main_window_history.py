@@ -1,7 +1,6 @@
 """MainWindow 接入 HistoryManager 测试（Task 1.9 集成）。"""
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -28,8 +27,8 @@ class _StubConverter:
 def main_window_with_history(qtbot, tmp_path, monkeypatch):
     """MainWindow 注入 StubConverter + HistoryManager（tmp 路径）。"""
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
-    from src.ui.main_window import MainWindow
     from src.core.history import HistoryManager
+    from src.ui.main_window import MainWindow
     hm = HistoryManager(max_entries=10)
     stub = _StubConverter(sleep=0.02)
     w = MainWindow(converter=stub, history=hm)
@@ -42,8 +41,8 @@ def main_window_with_history(qtbot, tmp_path, monkeypatch):
 def main_window_with_history_fail(qtbot, tmp_path, monkeypatch):
     """MainWindow 注入 fail=True StubConverter + HistoryManager。"""
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
-    from src.ui.main_window import MainWindow
     from src.core.history import HistoryManager
+    from src.ui.main_window import MainWindow
     hm = HistoryManager(max_entries=10)
     stub = _StubConverter(sleep=0.02, fail=True)
     w = MainWindow(converter=stub, history=hm)

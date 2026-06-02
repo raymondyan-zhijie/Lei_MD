@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QApplication
 
-from src import __version__ as LEI_MD_VERSION
+from src import __version__ as LEI_MD_VERSION  # noqa: N812 (semantic: "LeiMD" is a brand prefix)
+
 
 class LeiMDApp:
     """Lei_MD 应用配置工具。"""

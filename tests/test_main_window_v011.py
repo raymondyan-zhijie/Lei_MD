@@ -13,7 +13,6 @@
 """
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -68,7 +67,6 @@ def test_mainwindow_converter_injectable():
     """v0.1.1: 构造时注入 converter，测试可换 Stub。"""
     from src.ui.main_window import MainWindow
     stub = _StubConverter()
-    from PySide6.QtWidgets import QMainWindow
     w = MainWindow(converter=stub)
     assert w._converter is stub
 
@@ -132,7 +130,6 @@ def test_mainwindow_cancel_button_stops_worker(qtbot, tmp_path):
 
 def test_mainwindow_error_shows_in_preview(qtbot, tmp_path):
     """v0.1.1: ConversionError → preview 显示错误信息，progress 隐藏。"""
-    from src.core.errors import ConversionError
     from src.ui.main_window import MainWindow
     stub = _StubConverter(fail=True)
     w = MainWindow(converter=stub)

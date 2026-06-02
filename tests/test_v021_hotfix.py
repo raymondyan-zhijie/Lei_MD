@@ -7,7 +7,6 @@ v0.2.2 audit M3.2 回归（terminal-signal 三选一 contract）：
 from __future__ import annotations
 
 import time
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,7 +14,6 @@ from PySide6.QtCore import QEventLoop, QTimer
 
 from src.core.config import ConfigManager
 from src.core.worker import ConversionWorker
-
 
 # ============ H3: UTF-8 BOM 容忍 ============
 

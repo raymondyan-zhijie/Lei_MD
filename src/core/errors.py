@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+
 
 class ErrorCode(str, Enum):
     """5 大类错误码（16 个具体 ID）。"""
@@ -106,9 +106,9 @@ class ConversionError(Exception):
     def __init__(
         self,
         code: ErrorCode,
-        message: Optional[str] = None,
+        message: str | None = None,
         *,
-        cause: Optional[BaseException] = None,
+        cause: BaseException | None = None,
         **format_kwargs,
     ):
         self.code = code

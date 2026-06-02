@@ -7,7 +7,6 @@ unavailable or fails.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
@@ -28,7 +27,12 @@ QPushButton:disabled { color: #777; }
 QTextEdit, QPlainTextEdit, QListWidget, QTableWidget, QLineEdit, QComboBox {
     background-color: #1e1e1e; color: #e0e0e0; border: 1px solid #444;
 }
-QProgressBar { background-color: #1e1e1e; color: #e0e0e0; border: 1px solid #444; text-align: center; }
+QProgressBar {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    border: 1px solid #444;
+    text-align: center;
+}
 QProgressBar::chunk { background-color: #2a82da; }
 QMenuBar, QMenu { background-color: #2b2b2b; color: #e0e0e0; }
 QMenu::item:selected { background-color: #2a82da; }
@@ -73,7 +77,7 @@ def _build_dark_palette() -> QPalette:
     pal.setColor(QPalette.Disabled, QPalette.ButtonText, QColor(127, 127, 127))
     return pal
 
-def apply_theme(mode: str, app: Optional[QApplication] = None) -> None:
+def apply_theme(mode: str, app: QApplication | None = None) -> None:
     """Apply theme to QApplication.
 
     mode: 'dark' | 'light' | 'system'
@@ -100,9 +104,9 @@ class ThemeManager:
 
     def __init__(self, on_change=None):
         self._on_change = on_change
-        self._current: Optional[bool] = None
+        self._current: bool | None = None
 
-    def current(self) -> Optional[str]:
+    def current(self) -> str | None:
         return "dark" if self._current else ("light" if self._current is False else None)
 
     def refresh(self) -> str:

@@ -23,7 +23,6 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from PySide6.QtCore import QEvent, QPoint
 from PySide6.QtGui import QCloseEvent
 
 from src.core.config import ConfigManager
@@ -254,8 +253,8 @@ def test_m4_2_close_event_with_real_batch_clears_active_ref(
     qtbot, isolated_config, isolated_history, tmp_path
 ):
     """M4.2: 用真实 BatchWorker 跑一遍：start 后 close，_active_batch 应被清。"""
-    from src.ui.main_window import MainWindow
     from src.core.batch_worker import BatchWorker
+    from src.ui.main_window import MainWindow
 
     win = MainWindow(config_manager=isolated_config, history=isolated_history)
     qtbot.addWidget(win)

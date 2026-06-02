@@ -13,8 +13,6 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-import pytest
-
 
 class _StubConverter:
     """可控制 sleep / fail 的转换器替身。"""

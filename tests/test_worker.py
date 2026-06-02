@@ -13,8 +13,6 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-import pytest
-
 from src.core.errors import ConversionError, ErrorCode
 
 
@@ -115,6 +113,7 @@ def test_worker_cancel_stops_thread(qtbot):
 def test_worker_is_qthread_subclass():
     """Worker 必须是 QThread 子类（PySide6 标准）。"""
     from PySide6.QtCore import QThread
+
     from src.core.worker import ConversionWorker
 
     assert issubclass(ConversionWorker, QThread)

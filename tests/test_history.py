@@ -12,9 +12,6 @@
 """
 from __future__ import annotations
 
-import time
-from pathlib import Path
-
 import pytest
 
 
@@ -126,7 +123,7 @@ def test_history_request_add_from_thread_is_safe(history_manager, qtbot):
 
 def test_history_corrupted_db_is_backed_up_and_recreated(isolated_data_home, qtbot):
     """history.db 损坏 → 启动时备份 .db.bak.<ts> + 重建空表。"""
-    from src.core.history import HistoryManager, history_db_path
+    from src.core.history import HistoryManager
 
     # 写坏 DB（不是有效 SQLite）
     db_dir = isolated_data_home / "Lei_MD"

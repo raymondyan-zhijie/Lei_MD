@@ -25,6 +25,7 @@ from typing import Any
 
 from PySide6.QtCore import QThread, Signal
 
+
 class ConversionWorker(QThread):
     """单文件转换后台线程。
 

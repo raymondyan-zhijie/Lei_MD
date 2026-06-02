@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
 from src.ui.drop_area import SUPPORTED_EXTENSIONS
 
+
 class FileList(QListWidget):
     """已添加文件列表。"""
 

@@ -4,8 +4,6 @@
 - main() 不抛异常
 - main() 会启动事件循环（用 monkeypatch 拦截）
 """
-import sys
-import pytest
 from unittest.mock import patch
 
 

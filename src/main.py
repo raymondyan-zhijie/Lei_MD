@@ -14,9 +14,11 @@
 from __future__ import annotations
 
 import sys
+
 from PySide6.QtWidgets import QApplication
 
 from src.app import LeiMDApp
+
 
 def main() -> int:
     """主入口函数。

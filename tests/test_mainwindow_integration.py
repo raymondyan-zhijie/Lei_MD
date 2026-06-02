@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
 
 from src.core.config import ConfigManager
 from src.core.history import HistoryManager
@@ -40,7 +38,7 @@ def test_mainwindow_applies_theme_from_config_on_start(app, isolated_config, iso
     isolated_config.update(theme="light")
     captured = []
     monkeypatch.setattr("src.ui.main_window.apply_theme", lambda mode: captured.append(mode))
-    win = MainWindow(config_manager=isolated_config, history=isolated_history)
+    MainWindow(config_manager=isolated_config, history=isolated_history)
     assert "light" in captured
 
 

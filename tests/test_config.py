@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -28,7 +27,7 @@ def isolated_config_home(monkeypatch, tmp_path):
 
 def test_config_returns_defaults_when_no_file(isolated_config_home):
     """无 config.json → get() 返回 AppConfig() 默认值。"""
-    from src.core.config import ConfigManager, AppConfig
+    from src.core.config import AppConfig, ConfigManager
     cm = ConfigManager()
     cfg = cm.get()
     assert isinstance(cfg, AppConfig)
@@ -108,5 +107,5 @@ def test_config_creates_dir_if_missing(isolated_config_home):
     # isolated_config_home/Lei_MD 不应存在
     config_dir = isolated_config_home / "Lei_MD"
     assert not config_dir.exists()
-    cm = ConfigManager()
+    ConfigManager()
     assert config_dir.is_dir()

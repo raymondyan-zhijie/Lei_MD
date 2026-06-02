@@ -3,12 +3,9 @@ from __future__ import annotations
 
 import logging
 import time
-from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtCore import QEventLoop, QTimer
-from PySide6.QtWidgets import QApplication
 
 from src.core.config import ConfigManager
 from src.core.history import HistoryManager

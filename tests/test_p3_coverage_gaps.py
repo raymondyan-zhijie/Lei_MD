@@ -3,18 +3,11 @@ from __future__ import annotations
 
 import threading
 import time
-from pathlib import Path
-from unittest.mock import MagicMock
 
-import pytest
-from PySide6.QtCore import QCoreApplication, QEventLoop, QThread, QTimer
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QEventLoop, QTimer
 
 from src.core.batch_worker import BatchWorker
-from src.core.history import HistoryManager
-from src.ui import i18n
-from src.ui.i18n import Translator, set_locale, tr
-
+from src.ui.i18n import set_locale, tr
 
 # ============ BatchWorker 并发压测 ============
 

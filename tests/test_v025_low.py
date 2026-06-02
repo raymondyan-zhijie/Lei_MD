@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import pytest
 
-
 # ============================================================
 # L1: i18n locale whitelist
 # ============================================================
@@ -157,8 +156,9 @@ def test_preview_external_links_disabled(qtbot):
 
 def test_preview_safe_set_source_blocks_file_scheme(qtbot):
     """L3: ``_safe_set_source(file://...)`` 应当被拒；非本地 scheme 应透传。"""
-    from src.ui.preview_panel import PreviewPanel
     from PySide6.QtCore import QUrl
+
+    from src.ui.preview_panel import PreviewPanel
 
     panel = PreviewPanel()
     qtbot.addWidget(panel)
@@ -174,8 +174,9 @@ def test_preview_safe_set_source_allows_http(qtbot):
     但 _safe_set_source 只走父类；QTextBrowser 在测试环境也不会联网），
     所以这里只验证「不抛 + 落到父类路径」即可。
     """
-    from src.ui.preview_panel import PreviewPanel
     from PySide6.QtCore import QUrl
+
+    from src.ui.preview_panel import PreviewPanel
 
     panel = PreviewPanel()
     qtbot.addWidget(panel)

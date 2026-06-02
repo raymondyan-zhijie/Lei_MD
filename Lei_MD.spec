@@ -43,23 +43,39 @@ ENTRY = "src/main.py"
 # ──────────────────────────────────────────────────────────────────────
 hiddenimports = [
     # MarkItDown: dynamic converter registration via entry_points.
-    # PyInstaller's static analysis misses these — list the main ones.
+    # PyInstaller's static analysis misses these — list every installed
+    # converter. Verified against markitdown v0.1.x (the .dist-info on
+    # the build venv). Earlier v0.4.3-era spec named `_outlook_converter`
+    # (WRONG: it was renamed to `_outlook_msg_converter` in markitdown
+    # 0.1+) and `yt_dlp.extractor` (WRONG: markitdown dropped yt-dlp in
+    # 0.1+; it now uses `youtube_transcript_api` — see `_youtube_converter`).
     "markitdown",
     "markitdown.converters",
-    "markitdown.converters._pdf_converter",          # pdfminer-backed
-    "markitdown.converters._docx_converter",         # mammoth-backed
-    "markitdown.converters._xlsx_converter",         # openpyxl-backed
-    "markitdown.converters._pptx_converter",         # python-pptx-backed
-    "markitdown.converters._html_converter",         # bs4-backed
-    "markitdown.converters._image_converter",        # PIL-backed
-    "markitdown.converters._audio_converter",        # pydub-backed (optional, but
-                                                     # markitdown[all] pulls it in)
+    "markitdown.converters._audio_converter",
+    "markitdown.converters._bing_serp_converter",
+    "markitdown.converters._csv_converter",
+    "markitdown.converters._cu_converter",
+    "markitdown.converters._doc_intel_converter",
+    "markitdown.converters._docx_converter",
     "markitdown.converters._epub_converter",
-    "markitdown.converters._outlook_converter",
+    "markitdown.converters._exiftool",
+    "markitdown.converters._html_converter",
+    "markitdown.converters._image_converter",
+    "markitdown.converters._ipynb_converter",
+    "markitdown.converters._llm_caption",
+    "markitdown.converters._markdownify",
+    "markitdown.converters._outlook_msg_converter",
+    "markitdown.converters._pdf_converter",
+    "markitdown.converters._plain_text_converter",
+    "markitdown.converters._pptx_converter",
+    "markitdown.converters._rss_converter",
+    "markitdown.converters._transcribe_audio",
+    "markitdown.converters._wikipedia_converter",
+    "markitdown.converters._xlsx_converter",
+    "markitdown.converters._youtube_converter",
     "markitdown.converters._zip_converter",
-    # youtube-dl / yt-dlp backend for src/core/youtube.py
-    "yt_dlp",
-    "yt_dlp.extractor",
+    # YouTube transcript fetcher (replaces the long-removed yt-dlp backend)
+    "youtube_transcript_api",
     # PySide6 plugins that are dynamically loaded
     "PySide6.QtSvg",
     "PySide6.QtSvgWidgets",

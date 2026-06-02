@@ -47,7 +47,7 @@ ShowUninstDetails show
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
 
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "LICENSE"  ; if present; skip if missing
+!insertmacro MUI_PAGE_LICENSE "..\LICENSE"  ; repo root (installer.nsi lives in installer/)
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH

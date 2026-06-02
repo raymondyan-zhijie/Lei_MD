@@ -162,6 +162,19 @@ class MainWindow(QMainWindow):
         n = self.file_list.count()
         self.status.showMessage(f"已添加 {n} 个文件")
 
+        # P0.4: 接入 auto_convert 配置。
+        # - 关闭：仅加入列表，不启动转换（与配置项行为对齐）。
+        # - 单文件：自动转（同时选中该文件 → 触发 _on_file_selected）。
+        # - 多文件：仅加入列表（不自动批量）。批量触发由用户点击"批量转换"按钮
+        #   或菜单走 _on_batch_clicked()，与"非拖入"路径保持一致。
+        auto = bool(self._config.get().auto_convert)
+        if not auto or not paths:
+            return
+        if len(paths) == 1:
+            # 单文件自动转：先选中再触发 _on_file_selected。
+            self.file_list.select_path(paths[0])
+        # 多文件：留待用户主动触发批量任务。
+
     def _on_audio_rejected(self, audio_paths: list[str]) -> None:
         """v0.4.0 Task C：音频被 E_FILE_006 拦截，弹模态告知用户。"""
         from PySide6.QtWidgets import QMessageBox

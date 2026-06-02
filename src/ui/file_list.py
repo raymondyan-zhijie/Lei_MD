@@ -80,6 +80,20 @@ class FileList(QListWidget):
                 out.append(p)
         return out
 
+    def select_path(self, path: str) -> bool:
+        """按 abs path 选中一行（精确匹配）。
+
+        Returns True if a matching row was found and set as the current
+        item (which then triggers the file_selected signal). False if the
+        path is not in the list.
+        """
+        for i in range(self.count()):
+            item = self.item(i)
+            if item.data(Qt.ItemDataRole.UserRole) == path:
+                self.setCurrentItem(item)
+                return True
+        return False
+
     def _on_current_changed(self, current, _previous) -> None:
         if current is None:
             return

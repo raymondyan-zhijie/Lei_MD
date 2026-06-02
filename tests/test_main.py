@@ -75,23 +75,39 @@ def test_main_conversion_lands_in_history(qapp, isolated_config_home, tmp_path):
     from src.core.worker import ConversionWorker
     from src.ui.main_window import MainWindow
 
-    cfg = ConfigManager()
-    history = HistoryManager(max_entries=cfg.get().max_history)
-    win = MainWindow(config_manager=cfg, history=history)
+    class _FastConverter:
+        """Stub that returns synchronously so the test doesn't depend on
+        the real MarkItDown / pydub / mammoth chain completing."""
+        def convert(self, path: str) -> str:  # noqa: D401
+            from pathlib import Path
+            return f"# converted {Path(path).name}\n"
+
+    # Construct with real managers (the wire we're testing), then swap
+    # in the fast stub for the converter (we don't want this test to
+    # depend on the real MarkItDown stack).
+    win = MainWindow(
+        config_manager=ConfigManager(),
+        history=HistoryManager(max_entries=50),
+    )
+    win._converter = _FastConverter()  # type: ignore[assignment]
+    history = win._history  # type: ignore[assignment]
 
     # Create a tiny .md input the worker can convert
     src = tmp_path / "sample.md"
     src.write_text("# hello\nworld\n", encoding="utf-8")
 
     # Spin up the worker, exactly like MainWindow._on_file_selected does.
-    worker = ConversionWorker(win._converter, str(src))
+    worker = ConversionWorker(win._converter, str(src))  # type: ignore[arg-type]
     worker.job_done.connect(win._on_job_done)
-    worker.start()
-    worker.wait(5000)  # bounded
-    qapp.processEvents()
 
-    # HistoryManager.request_add goes through a signal → main-thread slot.
-    # Pump the queue so the slot has run.
+    worker.start()
+    # Block the test thread until the worker thread exits. We can't
+    # rely on a Qt signal because the main thread is the test thread —
+    # `wait()` blocks both the thread AND its event loop, so connected
+    # lambdas don't fire until we processEvents() afterwards.
+    assert worker.wait(5000), "Worker thread did not finish within 5s"
+    qapp.processEvents()  # now dispatch queued cross-thread signals
+
     rows = history.list(limit=10)
     paths = [r.source_path for r in rows]
     assert any(p == str(src) for p in paths), (

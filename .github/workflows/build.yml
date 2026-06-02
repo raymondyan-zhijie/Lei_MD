@@ -63,7 +63,17 @@ jobs:
         shell: pwsh
         run: |
           choco install nsis -y --no-progress
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+          # choco modifies HKLM\...\Environment\Path, but the current
+          # pwsh process is already loaded with the OLD Path. Re-read
+          # from the registry (the only reliable way inside one shell
+          # session) so that makensis.exe is on PATH for subsequent steps.
+          $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $userPath    = [System.Environment]::GetEnvironmentVariable('Path', 'User')
+          $env:Path    = "$machinePath;$userPath"
+          # NSIS installs to 'C:\Program Files (x86)\NSIS\' (32-bit Program Files
+          # because makensis is 32-bit); append explicitly as a belt-and-braces.
+          $nsisPath    = Join-Path ${env:ProgramFiles(x86)} 'NSIS'
+          if (Test-Path $nsisPath) { $env:Path = "$nsisPath;$env:Path" }
           makensis /VERSION
 
       - name: Run build-windows.ps1

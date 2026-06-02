@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
@@ -152,6 +152,11 @@ class MainWindow(QMainWindow):
         self._active_worker: ConversionWorker | None = None
         # ：批量转换时取消按钮要能取消 batch
         self._active_batch: BatchWorker | None = None
+        # v0.4.3 P0.5: 累计 batch 中已完成的 (path -> markdown) 映射。
+        # BatchWorker 自身只发 item_finished(path, md) signal，finished 时不携带结果，
+        # 所以 MainWindow 必须自己累积，否则成功的 markdown 全丢（之前用户必须靠
+        # _on_single_finished-like 路径但批量没接入）。
+        self._batch_results: dict[str, str] = {}
         # v0.4.2 P1 M4：YouTube 抓取 worker（一次只能跑一个）
         self._active_youtube: YouTubeFetchWorker | None = None
 
@@ -603,8 +608,11 @@ class MainWindow(QMainWindow):
             self.status.showMessage("文件列表为空")
             return
         concurrency = max(1, int(self._config.get().batch_concurrency))
+        # P0.5: 上一次 batch 的累积映射清空 —— 否则上轮成功的 md 会污染下一轮。
+        self._batch_results.clear()
         bw = BatchWorker(self._converter, paths, concurrency=concurrency)
         bw.progress.connect(self._on_batch_progress)
+        bw.item_finished.connect(self._on_batch_item_finished)
         # finished 结束后要把 BatchWorker deleteLater()，
         # 否则下一次 _start_batch 持有的旧 bw 还活着（内存泄漏 / dangling）。
         # 通过 lambda 透传 bw 引用，slot 内部用完即弃。
@@ -627,9 +635,35 @@ class MainWindow(QMainWindow):
         self.cancel_button.setVisible(False)
         if self._active_batch is bw:
             self._active_batch = None
+        # P0.5: batch 生命周期结束，累积映射也清空，避免下次 _start_batch 重复
+        # clear()（防呆） + 释放短时 markdown 内存。失败条目由 BatchWorker 内部
+        # 计数，MainWindow 不再单独追踪。
+        self._batch_results.clear()
         # BatchWorker 是 QObject 树根，必须 deleteLater()，
         # 否则它内部的 QThreadPool + 已派发的 _ConvertRunnable 不会被回收。
         bw.deleteLater()
+
+    @Slot(str, str)
+    def _on_batch_item_finished(self, path: str, md: str) -> None:
+        # P0.5: 成功条目落地。Markdown 写到 history（用 Path 后缀推 source_format），
+        # 同时缓存到 _batch_results 备用（未来批量 UI 可订阅此映射做"复制全部"
+        # / "合并输出" 等动作 —— 当前这层先不做，但数据先存）。
+        try:
+            fmt = Path(path).suffix.lstrip(".").lower() or "unknown"
+        except Exception:
+            fmt = "unknown"
+        try:
+            self._history.request_add(
+                source_path=path,
+                fmt=fmt,
+                md_len=len(md),
+                duration_ms=0,  # batch 不再细分每条耗时（BatchWorker 不发）
+                success=True,
+                error="",
+            )
+        except Exception as exc:  # 历史写入失败不能影响 batch 主流程
+            self.status.showMessage(f"历史记录失败：{exc}")
+        self._batch_results[path] = md
 
     def _on_batch_item_failed(self, path: str, err: str) -> None:
         # 当前简单记到状态栏；计划加入错误汇总面板

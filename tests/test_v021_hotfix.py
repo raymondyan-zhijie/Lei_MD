@@ -106,6 +106,7 @@ def test_mainwindow_cancel_button_cancels_batch(qtbot, monkeypatch, isolated_con
         def __init__(self, converter, paths, concurrency):
             self.progress = MagicMock()
             self.finished = MagicMock()
+            self.item_finished = MagicMock()
             self.item_failed = MagicMock()
         def cancel(self):
             cancel_called.append(True)

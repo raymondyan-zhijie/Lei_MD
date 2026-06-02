@@ -47,6 +47,7 @@ def test_start_batch_uses_config_concurrency(isolated_config, isolated_history, 
             captured.append(concurrency)
             self.progress = MagicMock()
             self.finished = MagicMock()
+            self.item_finished = MagicMock()
             self.item_failed = MagicMock()
         def start(self): pass
         def cancel(self): pass

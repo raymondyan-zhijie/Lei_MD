@@ -125,6 +125,7 @@ def test_p1_1_start_batch_with_real_files_replaces_old_batch(
             # 给 Qt 信号 dummy 属性（_start_batch 内部要 .connect）
             self.progress = MagicMock()
             self.finished = MagicMock()
+            self.item_finished = MagicMock()
             self.item_failed = MagicMock()
             # v0.4.1 P0 S3：main_window.closeEvent 改用 public wait_finished()
             self.wait_finished = MagicMock(return_value=True)

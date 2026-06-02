@@ -63,17 +63,36 @@ def test_batch_worker_runs_all_and_emits_finished(qtbot, tmp_path):
 # ----------- 进度信号 -----------
 
 def test_batch_worker_emits_progress_with_done_total(qtbot, tmp_path):
-    """progress(done, total) done 0→N 单调递增。"""
+    """progress(done, total) done 0→N 单调递增。
+
+    Regression: this test was flaky (~10% failure rate) because the
+    previous implementation only waited for ``_done_count == 6`` and
+    then asserted on the progress list — but the worker's progress
+    signal can still be in flight when the assertion runs, causing
+    ``RuntimeError: Signal source has been deleted`` once the test
+    function returns and Qt cleans up. Fix: also wait for the
+    ``finished`` signal so the test frame fully completes before
+    assertions.
+    """
     from src.core.batch_worker import BatchWorker
     paths = _make_paths(tmp_path, [f"f{i}.pdf" for i in range(6)])
     stub = _StubConverter(sleep=0.02)
     bw = BatchWorker(stub, paths, concurrency=3)
-    progress = []
-    bw.progress.connect(lambda d, t: progress.append((d, t)))
+    progress: list[tuple[int, int]] = []
+
+    def _on_progress(d: int, t: int) -> None:
+        progress.append((d, t))
+
+    bw.progress.connect(_on_progress)
 
     bw.start()
-    qtbot.waitUntil(lambda: bw._done_count == 6, timeout=5000)
+    # Wait until both done_count == 6 AND finished signal received.
+    # ``finished`` is emitted after the last progress signal, so this
+    # guarantees the progress list is complete before we read it.
+    with qtbot.waitSignal(bw.finished, timeout=5000):
+        qtbot.waitUntil(lambda: bw._done_count == 6, timeout=5000)
     # done 终值 == 6, total == 6
+    assert progress, "no progress signals captured"
     last = progress[-1]
     assert last == (6, 6)
     # done 单调不减

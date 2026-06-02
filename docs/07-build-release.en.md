@@ -11,11 +11,11 @@ Complete guide to building Lei_MD as a Windows executable (and optional NSIS ins
 Lei_MD is a Python + PySide6 desktop app. End users don't want to install Python, set up venv, manage deps — they want to **double-click a .exe**. So we build:
 
 ```
-Python source → PyInstaller → Lei_MD-0.4.1.exe (onefile, ~40 MB)
+Python source → PyInstaller → Lei_MD-0.4.7.exe (onefile, ~139 MB)
                                 ↓
                               NSIS  (optional)
                                 ↓
-                       Lei_MD-0.4.1-Setup.exe (installer wizard, ~30 MB)
+                       Lei_MD-0.4.7-Setup.exe (installer wizard, ~150 MB)
 ```
 
 **What users get is the `.exe` (double-click to run) or `Setup.exe` (double-click to install into Program Files).**
@@ -252,9 +252,14 @@ gh workflow run build.yml -f with_installer=true
 - First run: ~8-12 minutes (windows-latest cold start + venv deps + PyInstaller onefile)
 - Subsequent: ~5-8 minutes (pip cache hits)
 
-**Known pitfalls** (v0.4.5 in-the-wild):
+**Known pitfalls** (v0.4.5-v0.4.7 in-the-wild):
 - PowerShell 7 strict mode fails to parse `$AppVersion:` (colon) — must wrap in `${AppVersion}` (build-windows.ps1 L188/189)
-- NSIS installer job requires explicit `choco install nsis` (windows-latest runner has no makensis by default)
+- NSIS installer job requires explicit `choco install nsis` (windows-latest runner has no makensis by default); choco does **not** auto-refresh PowerShell `$env:PATH` — must `Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\NSIS'` and manually prepend `Program Files (x86)\NSIS` (build.yml NSIS step does this)
+- `git push <tag>` does **not** create a GitHub Release (GitHub Actions behavior): the `Ensure GitHub Release exists` step must use `gh release view $tag` as a pre-check + `$LASTEXITCODE` (do **not** rely on `Select-String -NotMatch 'already exists'` — the HTTP 422 error text does not contain that string and the step will fail)
+- PyInstaller spec `excludes=` **forbidden pattern**: never list stdlib submodules. The defusedxml package re-exports 8 `xml.dom/etree/sax` submodules; excluding one crashes the runtime with `ModuleNotFoundError: No module named 'xml.dom.minidom'` at a call site far from the spec line (main_window → converter → markitdown → _rss_converter → defusedxml.minidom L10). The `excludes=` list should only contain third-party leaf packages (matplotlib/scipy/pytest) — never stdlib internals. Detection script: `scripts/audit_excludes.py` (in `windows-desktop-build-pipeline` skill)
+- PyInstaller spec `__file__` **trap**: PyInstaller 6.20+ strict mode does not inject `__file__` when compiling the spec → `NameError`. Use the `SPECPATH` global that PyInstaller injects instead
+
+**v0.4.7 E2E automation verified** (2026-06-02): `git tag v0.4.7 && git push origin v0.4.7 --force` → build #11 (5 min) → Ensure Release step prints "already exists — skipping create" → `gh release upload --clobber` → zero manual steps. Release v0.4.7 id `333196237` + asset 145.5 MB.
 
 **v0.4.5+ status**: ✅ enabled. Pushing a `v*` tag auto-builds + attaches the .exe to the release. Day-to-day PR/merge runs only `test.yml`, no impact on build minutes.
 
@@ -269,4 +274,4 @@ gh workflow run build.yml -f with_installer=true
 
 ---
 
-**Updated for v0.4.1** (2026-06-02)
+**Updated for v0.4.7** (2026-06-02)

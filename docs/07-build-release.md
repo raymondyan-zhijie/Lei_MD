@@ -11,11 +11,11 @@
 Lei_MD 是一个 Python + PySide6 桌面应用。普通用户**不**想装 Python、装依赖、配 venv——他们想要**双击 .exe**。所以我们要：
 
 ```
-Python source → PyInstaller → Lei_MD-0.4.1.exe (onefile, ~40 MB)
+Python source → PyInstaller → Lei_MD-0.4.7.exe (onefile, ~139 MB)
                                 ↓
                               NSIS  (可选)
                                 ↓
-                       Lei_MD-0.4.1-Setup.exe (安装向导, ~30 MB)
+                       Lei_MD-0.4.7-Setup.exe (安装向导, ~150 MB)
 ```
 
 **用户拿到的就是 `.exe`（双击跑）或 `Setup.exe`（双击安装到 Program Files）**。
@@ -252,9 +252,14 @@ gh workflow run build.yml -f with_installer=true
 - 首次：~8-12 分钟（windows-latest runner cold start + venv 装依赖 + PyInstaller onefile）
 - 后续：~5-8 分钟（pip cache 命中）
 
-**已知坑**（v0.4.5 实战）：
+**已知坑**（v0.4.5-v0.4.7 实战）：
 - PowerShell 7 strict-mode 解析 `$AppVersion:`（冒号）会失败 — 必须在 `${AppVersion}` 包起来（build-windows.ps1 L188/189）
-- NSIS 安装包 job 需要显式 `choco install nsis`（windows-latest runner 默认不带）
+- NSIS 安装包 job 需要显式 `choco install nsis`（windows-latest runner 默认不带）；choco 装后**不**自动刷新 PowerShell `$env:PATH`，需 `Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\NSIS'` + 手动 prepend `Program Files (x86)\NSIS`（build.yml NSIS step 已加）
+- tag push ≠ 创建 release（GitHub Actions 行为）：必须 `Ensure GitHub Release exists` step 用 `gh release view $tag` 预检 + `$LASTEXITCODE` 判断（**不要**用 `Select-String -NotMatch 'already exists'` 字符串过滤 — HTTP 422 错误信息不含这串文字，会 fail）
+- PyInstaller spec `excludes` **禁忌**：不列 stdlib 子模块。defusedxml 链 re-export 8 个 `xml.dom/etree/sax` 子模块，exclude 1 个 → 运行时崩 `ModuleNotFoundError: No module named 'xml.dom.minidom'`，崩溃点远离 exclude 行（main_window → converter → markitdown → _rss_converter → defusedxml.minidom L10）。excludes 只列第三方叶子包（matplotlib/scipy/pytest），不动 stdlib。详细 + 检测脚本：`scripts/audit_excludes.py`（在 windows-desktop-build-pipeline skill）
+- PyInstaller spec `__file__` **陷阱**：PyInstaller 6.20+ strict mode 编译 spec 时没有 `__file__` global → NameError。必须用 PyInstaller 注入的 `SPECPATH` 替代
+
+**v0.4.7 E2E 自动化验证**（2026-06-02）：`git tag v0.4.7 && git push origin v0.4.7 --force` → 自动 build #11 (5 min) → Ensure Release step print "already exists — skipping create" → `gh release upload --clobber` → 0 人工。Release v0.4.7 id `333196237` + asset 145.5 MB。
 
 **当前 v0.4.5+ 状态**：✅ 启用。tag 推 v* 自动 build + attach Release；日常 PR/merge 只跑 `test.yml`，不影响 build minutes。
 
@@ -269,4 +274,4 @@ gh workflow run build.yml -f with_installer=true
 
 ---
 
-**更新于 v0.4.1**（2026-06-02）
+**更新于 v0.4.7**（2026-06-02）

@@ -13,6 +13,8 @@ Covers:
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 # ============================================================
@@ -102,7 +104,7 @@ def test_drop_area_collect_files_respects_max_depth(tmp_path):
         tmp_path, out, max_depth=2, max_files=100,
     )
 
-    names = [p.rsplit("/", 1)[-1] for p in out]
+    names = [Path(p).name for p in out]
     assert "shallow.pdf" in names
     assert "mid.pdf" in names
     assert "deep.pdf" not in names, f"L2: 超深文件应被截断，实际 {out}"
@@ -135,7 +137,7 @@ def test_drop_area_collect_files_filters_unsupported_extensions(tmp_path):
     out: list[str] = []
     DropArea._collect_files_from_dir(tmp_path, out, max_depth=5, max_files=100)
 
-    names = [p.rsplit("/", 1)[-1] for p in out]
+    names = [Path(p).name for p in out]
     assert "ok.pdf" in names
     assert "bad.mp3" not in names
 

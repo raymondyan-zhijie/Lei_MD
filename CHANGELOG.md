@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-02
+
+v0.4.0 release 推出了 CI workflow 但 4 个 commit 之后才让 CI 真正跑绿。**205/205 测试绿 · 7/7 CI jobs 绿**。
+
+### Fixed
+
+- **CI: ruff 治理** (`86a2e27`): `ruff check src/ tests/` 从 151 errors → 0 errors
+  - auto-fix 112 个 (--fix --unsafe-fixes): I001 unsorted imports / F401 unused / UP007 union syntax
+  - 手改 18 个: F821 log→_log / E402 import 顺序 / N802 Qt event 强制驼峰 (noqa) / N812 LEI_MD_VERSION brand import (noqa)
+  - 拆 32 个 E501 长行: log.warning 父化、_log 改 named function、CSS 拆多行
+  - `pyproject.toml` 加 per-file-ignores (tests/i18n/styles 走 E501 例外)
+- **CI: flaky test 修** (`d5d505e`): `test_batch_worker_emits_progress_with_done_total` Qt Signal 在 worker deleteLater 时仍 in flight 导致"Signal source has been deleted"
+  - 加 `qtbot.waitSignal(bw.finished)` 等最后信号
+  - 20/20 本地 stress 绿 (修前 9/10)
+- **CI: Windows XDG_*_HOME 修复** (`ea02458`): `config_dir()` / `data_dir()` 在 Windows 上**只读 %APPDATA%**，忽略 `XDG_CONFIG_HOME` / `XDG_DATA_HOME`
+  - 导致 Windows runner 上 18 个测试因 state pollution 失败 (theme='light' 残留、history rows 泄露、config 目录不存在)
+  - 修法: Windows 优先读 XDG_*_HOME (test override)，production 默认仍走 %APPDATA%
+  - 真实 production 行为不变
+- **CI: Windows rsplit path 修复** (`7c09a58`): `tests/test_v025_low.py` 用 `p.rsplit("/", 1)[-1]` 取 basename —— 在 Windows 上 path sep 是 `\\` 而非 `/`，所以拆分失败
+  - 改用 `Path(p).name` (跨平台)
+  - 影响 2 个 drop_area 测试
+
+### CI Status
+
+- 7-job matrix: ubuntu + windows × py3.10/3.11/3.12/3.13 (排除 win+3.10)
+- 实际跑出 7/7 全绿 (commit `7c09a58`)
+- 完整历程: #1-3 YAML 缩进 fail → #4 ruff 4/7 fail → #5 Windows XDG 4/7 fail → #6 Windows rsplit 3/7 fail → #7 ✅
+- 教训: v0.x 之前 CI 只跑 Linux, 隐藏了 Windows-only 路径/state bug; v0.4.1 修复后才真"cross-platform tested"
+
+### Notes
+
+- v0.4.0 tag 没动 (已发布不重写 CHANGELOG)
+- 本次 4 个 commit 全部是 CI 修复, 无功能变更 → patch 版本号 (0.4.1)
+- pyproject.toml 仍 `version = "0.4.0"` (没改 version; tag 才是 source of truth for release)
+
 ## [0.4.0] - 2026-06-02
 
 v0.3.0 IMPLEMENTATION_VS_PLAN §4 中标记的 3 个候选全部实施。**205/205 测试绿**（v0.3.0 的 157 + 新增 48）。

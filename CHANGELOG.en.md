@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-02
+
+v0.4.0 release shipped the CI workflow file, but 4 follow-up commits were needed to make CI actually run green. **205/205 tests green · 7/7 CI jobs green**.
+
+### Fixed
+
+- **CI: ruff governance** (`86a2e27`): `ruff check src/ tests/` from 151 errors → 0 errors
+  - auto-fix 112 (`--fix --unsafe-fixes`): I001 unsorted imports / F401 unused / UP007 union syntax
+  - hand-fix 18: F821 `log`→`_log` / E402 import order / N802 Qt event mandatory camelCase (`noqa`) / N812 `LEI_MD_VERSION` brand import (`noqa`)
+  - split 32 E501 long lines: log.warning parenthesized, `_log` named function, CSS split multiline
+  - `pyproject.toml` per-file-ignores for `tests/`, `src/ui/i18n.py`, `src/ui/styles.py` (E501 exception)
+- **CI: flaky test fix** (`d5d505e`): `test_batch_worker_emits_progress_with_done_total` — Qt Signal still in flight when worker `deleteLater()` ran, causing "Signal source has been deleted"
+  - added `qtbot.waitSignal(bw.finished)` to wait for the last signal
+  - 20/20 local stress green (was 9/10 before)
+- **CI: Windows XDG_*_HOME fix** (`ea02458`): `config_dir()` / `data_dir()` on Windows only read `%APPDATA%`, ignored `XDG_CONFIG_HOME` / `XDG_DATA_HOME`
+  - caused 18 test failures on Windows runners (state pollution: theme='light' residue, history rows leaking, config dir missing)
+  - fix: Windows prefers `XDG_*_HOME` (test override), production default still falls back to `%APPDATA%`
+  - **no production behavior change**
+- **CI: Windows `rsplit` path fix** (`7c09a58`): `tests/test_v025_low.py` used `p.rsplit("/", 1)[-1]` to extract basename — on Windows the path separator is `\\` not `/`, so split failed
+  - switched to `Path(p).name` (cross-platform)
+  - affected 2 drop_area tests
+
+### CI Status
+
+- 7-job matrix: ubuntu + windows × py3.10/3.11/3.12/3.13 (excluding win+3.10)
+- Final run #7: **7/7 green** at commit `7c09a58`
+- Full arc: #1-3 YAML indent fail → #4 ruff 4/7 fail → #5 Windows XDG 4/7 fail → #6 Windows rsplit 3/7 fail → #7 ✅
+- Lesson: prior v0.x CI only ran Linux, hiding Windows-only path/state bugs; only after v0.4.1 do we have a truly cross-platform tested codebase
+
+### Notes
+
+- v0.4.0 tag untouched (released changelogs are immutable)
+- All 4 commits in this release are CI fixes, no functional changes → patch version (0.4.1)
+- `pyproject.toml` still `version = "0.4.0"` (not bumped; the tag is the source of truth for the release)
+
 ## [0.4.0] - 2026-06-02
 
 All 3 candidates marked in v0.3.0's IMPLEMENTATION_VS_PLAN §4 implemented. **205/205 tests green** (157 from v0.3.0 + 48 new).

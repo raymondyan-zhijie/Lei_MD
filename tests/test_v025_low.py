@@ -22,15 +22,19 @@ import pytest
 # ============================================================
 
 def test_i18n_valid_locales_whitelist_constant():
-    """L1: VALID_LOCALES 必须存在，且包含 {system, en, zh_CN, en_US}。
+    """L1: VALID_LOCALES 必须存在，只列真 locale（不含 system 触发器）。
 
-    v0.2.7 P0 增补 "en"：让英文用户（DEFAULT_LOCALE）启动时不打 warning，
-    同时保持白名单收紧（攻击者控制的 locale 仍 fallback）。
+    v0.4.4+ P0: system 不再是字面 locale；它是触发器，会被
+    ``_resolve_system_locale()`` 解析为 zh_CN / en_US。VALID_LOCALES
+    只列真 locale 字符串。
     """
     from src.ui import i18n
 
     assert hasattr(i18n, "VALID_LOCALES"), "L1: 缺少模块常量 VALID_LOCALES"
-    assert i18n.VALID_LOCALES == frozenset({"system", "en", "zh_CN", "en_US"})
+    assert hasattr(i18n, "SYSTEM_LOCALE_TRIGGER"), \
+        "L1: 缺少 SYSTEM_LOCALE_TRIGGER 常量"
+    assert i18n.SYSTEM_LOCALE_TRIGGER == "system"
+    assert i18n.VALID_LOCALES == frozenset({"en", "zh_CN", "en_US"})
 
 
 def test_i18n_set_locale_rejects_unknown_locale(monkeypatch):
@@ -60,14 +64,72 @@ def test_i18n_set_locale_rejects_plain_garbage(monkeypatch):
 
 
 def test_i18n_set_locale_accepts_each_whitelisted_value():
-    """L1: VALID_LOCALES 里的四个值都应当原样接受（含 v0.2.7 P0 新增的 "en"）。"""
+    """L1: VALID_LOCALES 里的字面 locale 都应当原样接受。
+
+    v0.4.4+ P0: "system" 是触发器不是字面 locale，从这个 test 移除
+    （system 解析逻辑在 test_i18n_resolve_system_locale_* 单测）。
+    """
     from src.ui import i18n
     from src.ui.i18n import set_locale
 
-    for loc in ("system", "en", "zh_CN", "en_US"):
+    for loc in ("en", "zh_CN", "en_US"):
         set_locale(loc, translations={"greet": f"hello-{loc}"})
         assert i18n._default.locale == loc
         assert i18n.tr("greet") == f"hello-{loc}"
+
+
+def test_i18n_resolve_system_locale_zh_cn(monkeypatch):
+    """L1: system 触发器 + LANG=zh_CN.UTF-8 → 解析为 zh_CN。"""
+    monkeypatch.setenv("LC_ALL", "")
+    monkeypatch.setenv("LANG", "zh_CN.UTF-8")
+    from src.ui.i18n import _resolve_system_locale
+    assert _resolve_system_locale() == "zh_CN"
+
+
+def test_i18n_resolve_system_locale_en_us(monkeypatch):
+    """L1: system 触发器 + LANG=en_US.UTF-8 → 解析为 en_US。"""
+    monkeypatch.setenv("LC_ALL", "")
+    monkeypatch.setenv("LANG", "en_US.UTF-8")
+    from src.ui.i18n import _resolve_system_locale
+    assert _resolve_system_locale() == "en_US"
+
+
+def test_i18n_resolve_system_locale_unknown_falls_back(monkeypatch):
+    """L1: system 触发器 + LANG=ja_JP.UTF-8（不支持的语言）→ 解析为 en_US。"""
+    monkeypatch.setenv("LC_ALL", "")
+    monkeypatch.setenv("LANG", "ja_JP.UTF-8")
+    from src.ui.i18n import _resolve_system_locale
+    assert _resolve_system_locale() == "en_US"
+
+
+def test_i18n_set_locale_system_resolves(monkeypatch):
+    """L1: set_locale('system') → 触发 _resolve_system_locale() → 加载对应 bundled JSON。
+
+    验证：system 不是字面 locale，set 后 _default.locale 一定是
+    zh_CN 或 en_US（取决于 LANG），且对应 JSON 真的被加载。
+    """
+    monkeypatch.setenv("LC_ALL", "")
+    monkeypatch.setenv("LANG", "zh_CN.UTF-8")
+    from src.ui import i18n
+    from src.ui.i18n import set_locale, tr
+
+    set_locale("system")
+    # 应当被解析为 zh_CN，locale 字段显示真 locale
+    assert i18n._default.locale == "zh_CN"
+    # bundled zh_CN.json 应有 youtube.fetch 翻译
+    assert tr("youtube.fetch") == "抓取字幕"
+
+
+def test_i18n_set_locale_system_loads_en_us(monkeypatch):
+    """L1: set_locale('system') + LANG=en_US → 加载 en_US.json。"""
+    monkeypatch.setenv("LC_ALL", "")
+    monkeypatch.setenv("LANG", "en_US.UTF-8")
+    from src.ui import i18n
+    from src.ui.i18n import set_locale, tr
+
+    set_locale("system")
+    assert i18n._default.locale == "en_US"
+    assert tr("youtube.fetch") == "Fetch subtitles"
 
 
 # ============================================================

@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import shutil
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -150,11 +151,23 @@ class ConfigManager:
     - get(): 返回当前 AppConfig 实例
     - update(**kwargs): 修改字段 + save()
     - save(): 写盘（utf-8 + ensure_ascii=False）
+    - on_change callback 列表: R4-6 字段变更后调，监听者（如 MainWindow）
+      据此 reload_language() / apply_theme() 等
     """
 
     def __init__(self) -> None:
         config_dir().mkdir(parents=True, exist_ok=True)
         self._config: AppConfig = self._load()
+        # R4-6 v0.4.4+：update() 后调所有回调。监听者用 self.get() 读
+        # 最新 AppConfig 实例。故意不引入 QObject/signal —— 保持 CM 是
+        # 纯 Python 对象，测试可无 QApplication 实例化（不要 PySide6
+        # 强耦合）。v0.4.4 试过 QObject 化导致 test_batch_item_finished
+        # 等无 qapp 测试卡事件循环，已回滚。
+        self._on_change_callbacks: list[Callable[[AppConfig], None]] = []
+
+    def on_change(self, callback: Callable[[AppConfig], None]) -> None:
+        """R4-6：注册一个 update() 后的回调。多次注册多次调用。"""
+        self._on_change_callbacks.append(callback)
 
     def _load(self) -> AppConfig:
         """从磁盘加载。无文件/损坏→返回默认。"""
@@ -266,6 +279,7 @@ class ConfigManager:
         """修改一个或多个字段，立即 save。
 
         未知字段静默忽略（不写盘、不抛错）。
+        R4-6 v0.4.4+：save 后调所有 on_change 回调（参数：最新 AppConfig）。
         """
         changed = False
         for k, v in kwargs.items():
@@ -274,3 +288,13 @@ class ConfigManager:
                 changed = True
         if changed:
             self.save()
+            # R4-6：通知监听者。回调异常被吞掉（避免一个监听者崩
+            # 影响其他监听者 / 写盘已经完成）
+            for cb in self._on_change_callbacks:
+                try:
+                    cb(self._config)
+                except Exception:  # noqa: BLE001
+                    _logger.warning(
+                        "ConfigManager on_change callback %r raised",
+                        cb, exc_info=True,
+                    )

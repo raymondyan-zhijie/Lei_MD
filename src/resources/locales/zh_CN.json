@@ -60,6 +60,8 @@
   "status.ready": "就绪",
   "status.converting": "正在转换 {done}/{total}",
   "status.cancelling": "正在取消...",
+  "status.drop_to_start": "拖入文件开始转换",
+  "button.cancel": "取消",
   "dialog.open_files": "选择文件",
   "dialog.open_folder": "选择文件夹",
   "error.E_FILE_NOT_FOUND": "文件不存在",

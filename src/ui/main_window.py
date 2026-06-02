@@ -135,20 +135,24 @@ class MainWindow(QMainWindow):
         self.progress_bar.setVisible(False)
         self.progress_bar.setFixedWidth(180)
         self.status.addPermanentWidget(self.progress_bar)
-
-        self.cancel_button = QPushButton("取消")
+        # 取消按钮（i18n 键：button.cancel）
+        self.cancel_button = QPushButton(_tr("button.cancel"))
         self.cancel_button.setVisible(False)
         self.cancel_button.setFixedHeight(self.progress_bar.sizeHint().height())
         self.status.addPermanentWidget(self.cancel_button)
         self.cancel_button.clicked.connect(self._on_cancel_clicked)
 
-        self.status.showMessage("拖入文件开始转换")
+        self.status.showMessage(_tr("status.drop_to_start"))
 
         # 信号连接
         self.drop_area.files_dropped.connect(self._on_files_dropped)
         # v0.4.0 Task C：音频被拒时弹 E_FILE_006 模态
         self.drop_area.audio_rejected.connect(self._on_audio_rejected)
         self.file_list.file_selected.connect(self._on_file_selected)
+        # R4-6 v0.4.4+：监听 ConfigManager 变化 → reload_language() + apply_theme()
+        # SettingsDialog accept 写回 cm 后会自动触发，主窗口文字立刻刷新。
+        # 用 on_change() 回调替代 Qt signal（保持 CM 纯 Python 对象）。
+        self._config.on_change(self._on_config_changed)
 
         # 当前活跃 worker
         self._active_worker: ConversionWorker | None = None
@@ -163,6 +167,28 @@ class MainWindow(QMainWindow):
         self._active_youtube: YouTubeFetchWorker | None = None
 
     # -------- slots --------
+
+    @Slot(object)
+    def _on_config_changed(self, new_cfg: object) -> None:
+        """R4-6 v0.4.4+：配置变化时刷新 UI 文字（语言 / 主题 / 输出目录等）。
+
+        既作 ConfigManager.on_change 回调（被注册），也作 @Slot（保留
+        向后兼容；其它地方 connect 时仍能用）。
+        """
+        from src.core.config import AppConfig
+        assert isinstance(new_cfg, AppConfig), (
+            f"on_change payload must be AppConfig, got {type(new_cfg).__name__}"
+        )
+        self.reload_language()
+        # 主题切换也走这条路径（避免单写一条 apply_theme signal）
+        try:
+            apply_theme(new_cfg.theme)
+        except Exception:  # noqa: BLE001
+            _log.warning(
+                "MainWindow._on_config_changed: apply_theme(%r) failed",
+                new_cfg.theme, exc_info=True,
+            )
+            apply_theme("system")
 
     def _on_files_dropped(self, paths: list[str]) -> None:
         self.file_list.add_files(paths)
@@ -276,15 +302,21 @@ class MainWindow(QMainWindow):
             return
         self.status.showMessage(f"已导出到 {path}", 5000)
 
-    def _resolve_output_dir(self) -> Path | None:
+    def _resolve_output_dir(self, *, _warn: bool = True) -> Path | None:
         """v0.4.4+ P0: 解析 ``output_dir=custom`` 配置成实际可写 Path。
 
         返回：
           - ``Path``：配置指向的目录存在 + 可写
           - ``None``：output_dir != "custom"，或 custom_output_dir 为空 /
-            不存在 / 不可写（已弹 QMessageBox 警告用户）
+            不存在 / 不可写
 
-        调用方在拿到 ``None`` 时退回到"原行为"（弹 dialog / 不自动导出）。
+        警告去重：
+          - 同一 MainWindow 实例，相同 custom_output_dir 路径只警告一次
+          - 配置被改成有效路径时自动清缓存
+          - 设置 ``_warn=False`` 可完全静默（batch 等不需要警告的场景）
+
+        修 R2-2 真 bug：原来每次调都弹 QMessageBox.warning（模态），
+        batch 转 10 个文件就弹 10 次对话框。R4-6 修：缓存 (path) → warned。
         """
         import os
 
@@ -292,30 +324,42 @@ class MainWindow(QMainWindow):
 
         cfg = self._config.get()
         if cfg.output_dir != "custom":
+            # output_dir 改回 same / 默认：清警告缓存
+            self._output_dir_warned_for = None
             return None
         if not cfg.custom_output_dir.strip():
+            self._output_dir_warned_for = None
             return None
         p = Path(cfg.custom_output_dir).expanduser()
+        # 路径变了 / 之前没警告过 → 重新评估
+        if getattr(self, "_output_dir_warned_for", None) != str(p):
+            self._output_dir_warned_for = None
         if not p.exists() or not p.is_dir():
-            msg = ERROR_MESSAGES.get(ErrorCode.E_SYS_002, {}).get(
-                "zh_CN", f"输出路径不存在：{p}"
-            )
-            QMessageBox.warning(
-                self,
-                "输出目录无效",
-                f"{msg}\n路径：{p}",
-            )
+            if _warn and self._output_dir_warned_for != str(p):
+                msg = ERROR_MESSAGES.get(ErrorCode.E_SYS_002, {}).get(
+                    "zh_CN", f"输出路径不存在：{p}"
+                )
+                QMessageBox.warning(
+                    self,
+                    "输出目录无效",
+                    f"{msg}\n路径：{p}",
+                )
+                self._output_dir_warned_for = str(p)
             return None
         if not os.access(p, os.W_OK):
-            msg = ERROR_MESSAGES.get(ErrorCode.E_SYS_002, {}).get(
-                "zh_CN", f"输出路径不可写：{p}"
-            )
-            QMessageBox.warning(
-                self,
-                "输出目录不可写",
-                f"{msg}\n路径：{p}",
-            )
+            if _warn and self._output_dir_warned_for != str(p):
+                msg = ERROR_MESSAGES.get(ErrorCode.E_SYS_002, {}).get(
+                    "zh_CN", f"输出路径不可写：{p}"
+                )
+                QMessageBox.warning(
+                    self,
+                    "输出目录不可写",
+                    f"{msg}\n路径：{p}",
+                )
+                self._output_dir_warned_for = str(p)
             return None
+        # 路径有效：清警告缓存（让下次变无效时再警告）
+        self._output_dir_warned_for = None
         return p
 
     def _on_youtube_fetch(self) -> None:
@@ -482,6 +526,31 @@ class MainWindow(QMainWindow):
         worker.deleteLater()
 
     # -------- 生命周期（  / ）--------
+
+    def reload_language(self) -> None:
+        """R4-6 v0.4.4+：切换语言后让 MainWindow 重渲染所有可见文字。
+
+        调用方：SettingsDialog._on_accept 写回 cm 后（主窗口实例须
+        注入同一个 ConfigManager），由 ``app.main_window.reload_language()``
+        触发。
+
+        行为：
+        1) ``set_locale(self._config.get().language)`` 切换 i18n 上下文
+        2) 重置所有硬编码 ``setText(...)`` / ``setPlaceholderText(...)`` /
+           ``setWindowTitle(...)`` / ``setStatusBarMessage(...)`` 用的
+           ``_tr(key)`` 翻译
+        3) 不重发任何外部 signal（被调用方是 SettingsDialog，主窗口
+           知道自己在 reload）
+        """
+        from src.ui.i18n import set_locale as _set_locale
+
+        _set_locale(self._config.get().language)
+        # 重新渲染所有可见文字（之前在 __init__ 一次性 _tr 的）
+        self.setWindowTitle("Lei_MD — MarkItDown GUI")  # 标题本身无 i18n
+        self.cancel_button.setText(_tr("button.cancel"))
+        self.yt_url_edit.setPlaceholderText(_tr("youtube.url.placeholder"))
+        self.yt_fetch_button.setText(_tr("youtube.fetch"))
+        self.status.showMessage(_tr("status.drop_to_start"))
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 (Qt event override)
         """窗口关闭：协作式停掉 batch / worker，避免 QThread 被 force-terminate。
@@ -716,7 +785,7 @@ class MainWindow(QMainWindow):
         # 目录（旁路 dialog）。这是专家建议的"批量转换应优先使用配置目录"。
         # 配置无效时不报错（已 _resolve_output_dir 弹过 QMessageBox 一次），
         # 只跳过自动导出，行为退回到"只写 history + 缓存"。
-        out_dir = self._resolve_output_dir()
+        out_dir = self._resolve_output_dir(_warn=False)
         if out_dir is not None:
             try:
                 target = out_dir / (Path(path).stem + ".md")

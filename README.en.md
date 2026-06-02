@@ -31,7 +31,7 @@ Drag a file → auto-convert → live preview → one-click export. **Let non-te
 | 📄 Documents | PDF · DOCX · DOC · PPTX · PPT · XLSX · XLS · EPUB |
 | 🌐 Text | HTML · HTM · CSV · JSON · XML · TXT · MD |
 | 🖼 Images | JPG · JPEG · PNG · GIF · BMP · WEBP (optional LLM description) |
-| 📦 Archives | ZIP · MSG · IPYNB |
+| 📦 Archives | ZIP |
 | ❌ **Not in v1.0** | MP3 · WAV · OGG · FLAC (planned for v1.1+, offline) |
 
 ## 🚀 Quick Start

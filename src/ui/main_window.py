@@ -169,6 +169,57 @@ class MainWindow(QMainWindow):
         )
         _log.info("MainWindow rejected %d audio file(s) with E_FILE_006", len(audio_paths))
 
+    def _on_copy_clicked(self) -> None:
+        """v0.4.1 P0 M1：把当前预览的 Markdown 复制到系统剪贴板。"""
+        from PySide6.QtWidgets import QMessageBox
+
+        if self.preview_panel.is_empty():
+            QMessageBox.information(
+                self, "复制 Markdown", "预览区为空，请先选中文件完成转换。"
+            )
+            return
+        if self.preview_panel.copy_to_clipboard():
+            n = len(self.preview_panel._last_md)  # noqa: SLF001
+            self.status.showMessage(f"已复制 {n} 字符到剪贴板", 3000)
+        else:
+            QMessageBox.warning(
+                self, "复制失败", "剪贴板不可用，请重试或检查系统权限。"
+            )
+
+    def _on_export_clicked(self) -> None:
+        """v0.4.1 P0 M2：把当前预览的 Markdown 导出为 .md 文件。"""
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+        if self.preview_panel.is_empty():
+            QMessageBox.information(
+                self, "导出 .md", "预览区为空，请先选中文件完成转换。"
+            )
+            return
+        # 默认文件名：取当前选中文件的 stem
+        selected = self.file_list.selected_paths()
+        if selected:
+            default_name = Path(selected[0]).stem + ".md"
+        else:
+            default_name = "output.md"
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "导出 Markdown",
+            default_name,
+            "Markdown 文件 (*.md);;所有文件 (*.*)",
+        )
+        if not path:
+            return  # 用户取消
+        try:
+            Path(path).write_text(
+                self.preview_panel._last_md,  # noqa: SLF001
+                encoding="utf-8",
+            )
+        except OSError as e:
+            _log.warning("MainWindow._on_export_clicked: write %s failed: %s", path, e)
+            QMessageBox.warning(self, "导出失败", f"写入 {path} 失败：\n{e}")
+            return
+        self.status.showMessage(f"已导出到 {path}", 5000)
+
     def _on_file_selected(self, path: str) -> None:
         # 取消上一个 worker（如果有）
         if self._active_worker is not None and self._active_worker.isRunning():
@@ -265,8 +316,9 @@ class MainWindow(QMainWindow):
           2) _active_worker?.cancel()   — QThread.cancel_event.set()，run() 跑
              到检查点会自然 return。
           3) worker.wait(2000)          — 最多 2s 等 QThread 真正退出。
-          4) bw._pool.waitForDone(2000) — 最多 2s 等 BatchWorker 内部 QThreadPool
-             排空已派发的 _ConvertRunnable。
+          4) bw.wait_finished(2000)     — 最多 2s 等 BatchWorker 内部 QThreadPool
+             排空已派发的 _ConvertRunnable（v0.4.1 P0 S3：改用 public API，
+             替代原本直接访问 bw._pool 的私有属性）。
           5) accept event               — 无论 wait 是否超时都 accept，避免用户卡死。
              超时只 log.warning（属于"异常路径"）。
 
@@ -307,15 +359,20 @@ class MainWindow(QMainWindow):
                 )
 
         # 4) 等 BatchWorker 的 QThreadPool 排空（最多 2s）
+        # （v0.4.1 P0 S3）：改用 public BatchWorker.wait_finished()，
+        # 不再访问 _pool 私有属性。
         if self._active_batch is not None:
             try:
-                pool = self._active_batch._pool  # noqa: SLF001
-            except AttributeError:
-                pool = None
-            if pool is not None and not pool.waitForDone(2000):
+                if not self._active_batch.wait_finished(2000):
+                    _log.warning(
+                        "MainWindow.closeEvent: BatchWorker 2000ms 内未排空，"
+                        "将强制 accept event 避免卡死用户"
+                    )
+            except RuntimeError:  # bw 已 deleteLater()，被 PyQt 哨兵抛出
                 _log.warning(
-                    "MainWindow.closeEvent: BatchWorker._pool 2000ms 内未排空，"
-                    "将强制 accept event 避免卡死用户"
+                    "MainWindow.closeEvent: BatchWorker.wait_finished() RuntimeError "
+                    "(deleteLater)",
+                    exc_info=True,
                 )
             # closeEvent 路径下 _on_batch_finished 还没跑（cancel 触发的
             # finalize 走 QTimer.singleShot(0)），手动清引用避免 dangling。
@@ -362,6 +419,13 @@ class MainWindow(QMainWindow):
         toolbar.setObjectName("MainToolbar")
         self._act_batch = toolbar.addAction("全部转换")
         self._act_batch.triggered.connect(self._start_batch)
+        toolbar.addSeparator()
+        # v0.4.1 P0 M1：实现 README 声称的"一键复制 Markdown"
+        self._act_copy = toolbar.addAction("复制 Markdown")
+        self._act_copy.triggered.connect(self._on_copy_clicked)
+        # v0.4.1 P0 M2：实现 README 声称的"导出为 .md 文件"
+        self._act_export = toolbar.addAction("导出 .md...")
+        self._act_export.triggered.connect(self._on_export_clicked)
 
         # 帮助菜单
         help_menu = menubar.addMenu("帮助(&H)")

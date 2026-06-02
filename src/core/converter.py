@@ -23,11 +23,11 @@ from pathlib import Path
 from markitdown import MarkItDown
 
 from src.core.errors import ConversionError, ErrorCode
-from src.ui.drop_area import SUPPORTED_EXTENSIONS
+from src.core.supported import SUPPORTED_EXTENSIONS  # v0.4.1 P0 S1
 
 logger = logging.getLogger(__name__)
 
-# 复用 DropArea 的 SSOT 集合
+# SSOT 集合（core/supported.py）
 SUPPORTED = SUPPORTED_EXTENSIONS
 
 # 500MB 上限（与 / 一致）

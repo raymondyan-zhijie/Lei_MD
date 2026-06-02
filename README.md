@@ -31,7 +31,7 @@
 | 📄 文档 | PDF · DOCX · DOC · PPTX · PPT · XLSX · XLS · EPUB |
 | 🌐 文本 | HTML · HTM · CSV · JSON · XML · TXT · MD |
 | 🖼 图片 | JPG · JPEG · PNG · GIF · BMP · WEBP（可选 LLM 描述） |
-| 📦 压缩 | ZIP · MSG · IPYNB |
+| 📦 压缩 | ZIP |
 | ❌ **v1.0 不支持** | MP3 · WAV · OGG · FLAC（计划 v1.1+ 离线实现） |
 
 ## 🚀 快速开始

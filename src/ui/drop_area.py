@@ -22,31 +22,14 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import QLabel
 
+# v0.4.1 P0 S1：SSOT 上提到 src/core/supported.py（修分层违例）
+# 本文件 re-export 保持向后兼容（tests/test_drop_area.py 等已直接引用）
+from src.core.supported import (  # noqa: F401
+    AUDIO_EXTENSIONS,
+    SUPPORTED_EXTENSIONS,
+)
+
 log = logging.getLogger(__name__)
-
-# 支持的扩展名（与 F2 + + 03 § SUPPORTED 一致）
-# 不支持音频：.wav / .mp3 / .ogg / .flac（详见 01 F9a， + 离线实现）
-SUPPORTED_EXTENSIONS: set[str] = {
-    # 文档
-    ".pdf", ".docx", ".pptx", ".xlsx", ".xls", ".ppt", ".doc",
-    ".epub", ".rtf", ".odt", ".ods", ".odp",
-    # 网页
-    ".html", ".htm", ".xml",
-    # 图片
-    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
-    # 数据
-    ".csv", ".json", ".tsv", ".xlsx",
-    # 压缩
-    ".zip",
-    # 文本
-    ".txt", ".md", ".rst", ".log",
-}
-
-# 音频扩展名集合（v0.4.0 Task C：显式拦截 + E_FILE_006 提示）
-# v1.0 不支持音频转录（仅 v1.1+ 离线实现）
-AUDIO_EXTENSIONS: set[str] = {
-    ".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".wma", ".opus",
-}
 
 # P3 ) 目录递归限深 + 限文件数，防止用户拖入「超大共享盘 / 深层
 # 嵌套目录」把 GUI 卡死。超限后截断 + log.warning。

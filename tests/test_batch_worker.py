@@ -182,3 +182,42 @@ def test_batch_worker_cancel_stops_new_dispatch(qtbot, tmp_path):
     qtbot.waitUntil(lambda: bool(finished_seen), timeout=3000)
     # 不应 6 个都跑（只跑了已 dispatch 的，最多 2 个）
     assert len(conv.calls) < 6, f"cancel 后还在跑：{len(conv.calls)}/6"
+
+
+# ----------- v0.4.1 P0 S3：public wait_finished() -----------
+
+def test_batch_worker_wait_finished_returns_true_after_start(qtbot, tmp_path):
+    """v0.4.1 P0 S3：BatchWorker.wait_finished() 是 public API，替代外部 _pool 访问。
+
+    验证：
+    - 调用 wait_finished(timeout) 不抛错
+    - 自然完成 / cancel 后都返回 True（runnable 在超时内结束）
+    - 返回值是 bool
+    """
+    from src.core.batch_worker import BatchWorker
+    paths = _make_paths(tmp_path, [f"f{i}.pdf" for i in range(3)])
+
+    class _FastConverter:
+        def convert(self, p):
+            return f"# {p}"
+
+    bw = BatchWorker(_FastConverter(), paths, concurrency=2)
+    finished_seen = []
+    bw.finished.connect(lambda: finished_seen.append(True))
+    bw.start()
+    qtbot.waitUntil(lambda: bool(finished_seen), timeout=3000)
+    # 自然完成后，wait_finished 应该返回 True（pool 早已排空）
+    result = bw.wait_finished(1000)
+    assert result is True, f"wait_finished should return True after natural completion, got {result}"
+
+
+def test_batch_worker_wait_finished_works_on_fresh_bw(qtbot):
+    """v0.4.1 P0 S3：未 start() 的 BatchWorker 调用 wait_finished() 也应返回 True。
+
+    没派发任何 runnable → pool 立即 waitForDone() → True。
+    """
+    from src.core.batch_worker import BatchWorker
+
+    bw = BatchWorker(_StubConverter(), ["dummy.pdf"], concurrency=1)
+    result = bw.wait_finished(100)
+    assert result is True, f"fresh BatchWorker.wait_finished should return True, got {result}"

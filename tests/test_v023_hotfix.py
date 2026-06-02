@@ -52,11 +52,15 @@ def test_appconfig_rejects_wrong_type_max_history():
 
 
 def test_appconfig_rejects_out_of_range_max_history():
-    """M6.3: max_history=0 或 1000 触发 TypeError。"""
+    """M6.3: max_history=0 或 1001 触发 TypeError（v0.4.1 P0 S2 上限扩到 1000）。
+
+    之前 v0.4.0 上限是 999，所以测试用 1000；v0.4.1 把上限放宽到 1000
+    （用户要存更多历史），测试相应改为 1001。
+    """
     with pytest.raises(TypeError):
         AppConfig(max_history=0)
     with pytest.raises(TypeError):
-        AppConfig(max_history=1000)
+        AppConfig(max_history=1001)
 
 
 def test_appconfig_rejects_wrong_type_auto_convert():

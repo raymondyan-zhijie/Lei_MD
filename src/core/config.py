@@ -101,9 +101,9 @@ class AppConfig:
             raise TypeError(
                 f"max_history must be int, got {type(self.max_history).__name__}"
             )
-        if not (1 <= self.max_history <= 999):
+        if not (1 <= self.max_history <= 1000):
             raise TypeError(
-                f"max_history must be in [1, 999], got {self.max_history}"
+                f"max_history must be in [1, 1000], got {self.max_history}"
             )
         if not isinstance(self.language, str):
             raise TypeError(f"language must be str, got {type(self.language).__name__}")

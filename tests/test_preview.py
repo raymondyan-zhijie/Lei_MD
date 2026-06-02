@@ -58,3 +58,32 @@ def test_preview_handles_invalid_markdown_gracefully(qtbot):
     panel.set_markdown("\x00\x01\x02 ???")
     # 不崩即可
     assert panel.is_empty() is False
+
+
+def test_preview_copy_to_clipboard_writes_text(qtbot):
+    """v0.4.1 P0 M1：copy_to_clipboard() 把 _last_md 写到系统剪贴板。
+
+    验证：
+    - 复制后 clipboard.text() == 原文
+    - 复制空面板也返回 True（空 copy 不算错）
+    - 复制非空返回 True
+    """
+    from PySide6.QtGui import QGuiApplication
+
+    from src.ui.preview_panel import PreviewPanel
+
+    panel = PreviewPanel()
+    qtbot.addWidget(panel)
+
+    # 空面板：copy 返回 True（不抛错）
+    assert panel.copy_to_clipboard() is True
+    assert QGuiApplication.clipboard().text() == ""
+
+    # 设置内容后复制
+    md = "# Title\n\nBody text\n"
+    panel.set_markdown(md)
+    assert panel.copy_to_clipboard() is True
+    cb = QGuiApplication.clipboard().text()
+    assert cb == md
+    assert "Title" in cb
+    assert "Body text" in cb

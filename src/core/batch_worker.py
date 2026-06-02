@@ -173,6 +173,23 @@ class BatchWorker(QObject):
         self._dispatched.append(task)
         self._pool.start(task)
 
+    def wait_finished(self, timeout_ms: int = 2000) -> bool:
+        """等所有已派发 runnable 真正回收（公开 API，替代外部直接访问 _pool）。
+
+        v0.4.1 P0 S3：原本 main_window.closeEvent 注释里写
+        ``bw._pool.waitForDone(2000)``——访问私有属性，破坏封装。
+        现暴露 public 方法 + 单元测试覆盖。
+
+        Args:
+            timeout_ms: 最大等待毫秒（默认 2000，UI 关闭场景够用）。
+
+        Returns:
+            True = 所有 runnable 都在超时内结束；False = 仍有残留。
+        """
+        # 拷贝到本地变量避免 self._pool 突然被 GC 回收（极小概率）
+        pool = self._pool
+        return pool.waitForDone(int(timeout_ms))
+
     def cancel(self) -> None:
         """协作式取消：不再 dispatch 新任务，已跑的继续。
 

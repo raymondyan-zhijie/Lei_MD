@@ -89,3 +89,17 @@ class PreviewPanel(QTextBrowser):
     def is_empty(self) -> bool:
         """是否为空。"""
         return not self._last_md
+
+    def copy_to_clipboard(self) -> bool:
+        """复制当前 Markdown 到系统剪贴板（v0.4.1 P0 M1：实现 README 声称的"一键复制"）。
+
+        Returns:
+            True = 复制成功（即使内容为空也返回 True — 空 copy 不算错）。
+        """
+        from PySide6.QtGui import QGuiApplication  # local import 避免顶层依赖
+        clipboard = QGuiApplication.clipboard()
+        if clipboard is None:
+            _log.warning("PreviewPanel.copy_to_clipboard: clipboard unavailable")
+            return False
+        clipboard.setText(self._last_md)
+        return True

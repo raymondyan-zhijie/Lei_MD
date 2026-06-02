@@ -126,6 +126,8 @@ def test_p1_1_start_batch_with_real_files_replaces_old_batch(
             self.progress = MagicMock()
             self.finished = MagicMock()
             self.item_failed = MagicMock()
+            # v0.4.1 P0 S3：main_window.closeEvent 改用 public wait_finished()
+            self.wait_finished = MagicMock(return_value=True)
             created.append(self)
         def cancel(self):
             self.cancel_called += 1

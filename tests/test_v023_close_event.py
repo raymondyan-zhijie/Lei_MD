@@ -139,11 +139,12 @@ def test_m4_1_close_event_cancels_batch_and_clears_ref(
     win = MainWindow(config_manager=isolated_config, history=isolated_history)
     qtbot.addWidget(win)
 
-    # 注入 spy batch（含 _pool 子 mock）
+    # 注入 spy batch：v0.4.1 P0 S3 后 main_window 改用 public wait_finished()
+    # （不再直接访问 _pool），所以 mock 的契约点从 _pool.waitForDone 移到
+    # bw.wait_finished()。fake_pool 仍保留是为了 assert pool 路径不被外部触发。
     fake_pool = MagicMock()
-    fake_pool.waitForDone.return_value = True
     fake_batch = MagicMock()
-    fake_batch._pool = fake_pool
+    fake_batch.wait_finished = MagicMock(return_value=True)
     fake_batch.cancel.return_value = None
     win._active_batch = fake_batch
     # worker 分支不触发
@@ -154,10 +155,14 @@ def test_m4_1_close_event_cancels_batch_and_clears_ref(
 
     # 主契约：batch.cancel() 调了
     assert fake_batch.cancel.called, "batch.cancel() should be called"
-    # waitForDone(2000) 调了
-    assert fake_pool.waitForDone.called
-    wfd_args, _ = fake_pool.waitForDone.call_args
-    assert wfd_args == (2000,), f"waitForDone 应传 2000, got {wfd_args}"
+    # v0.4.1 P0 S3：改用 public wait_finished(2000) 而非 _pool.waitForDone
+    assert fake_batch.wait_finished.called
+    wf_args, _ = fake_batch.wait_finished.call_args
+    assert wf_args == (2000,), f"wait_finished 应传 2000, got {wf_args}"
+    # 反向断言：S3 修复后不应再有人访问 _pool（除非 closeEvent 自己——已删）
+    assert not fake_pool.waitForDone.called, (
+        "S3 修复后 closeEvent 不应再访问 _pool.waitForDone"
+    )
     # M4.2：closeEvent 路径下手动清 _active_batch 引用
     assert win._active_batch is None, (
         "M4.2: closeEvent 路径下 _active_batch 必须清掉（避免 dangling pointer）"
@@ -168,16 +173,15 @@ def test_m4_1_close_event_cancels_batch_and_clears_ref(
 def test_m4_1_close_event_warning_when_batch_pool_times_out(
     qtbot, isolated_config, isolated_history, caplog
 ):
-    """M4.1 异常路径：batch._pool.waitForDone(2000) 超时仍 accept，但 log.warning。"""
+    """M4.1 异常路径：batch.wait_finished(2000) 超时仍 accept，但 log.warning。"""
     from src.ui.main_window import MainWindow
 
     win = MainWindow(config_manager=isolated_config, history=isolated_history)
     qtbot.addWidget(win)
 
-    fake_pool = MagicMock()
-    fake_pool.waitForDone.return_value = False  # 模拟超时
+    # v0.4.1 P0 S3：mock 契约点从 _pool.waitForDone 移到 batch.wait_finished()
     fake_batch = MagicMock()
-    fake_batch._pool = fake_pool
+    fake_batch.wait_finished = MagicMock(return_value=False)  # 模拟超时
     win._active_batch = fake_batch
     win._active_worker = None
 
@@ -187,9 +191,9 @@ def test_m4_1_close_event_warning_when_batch_pool_times_out(
 
     assert evt.isAccepted(), "异常路径：event 必须 accept"
     assert any(
-        "BatchWorker._pool 2000ms 内未排空" in rec.message
+        "BatchWorker 2000ms 内未排空" in rec.message
         for rec in caplog.records
-    ), f"应发出 batch pool 超时 warning, got: {[r.message for r in caplog.records]}"
+    ), f"应发出 batch wait_finished 超时 warning, got: {[r.message for r in caplog.records]}"
     # 即使超时也要清掉 _active_batch（M4.2 dangling 防护）
     assert win._active_batch is None
 

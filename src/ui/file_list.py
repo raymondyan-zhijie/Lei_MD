@@ -1,6 +1,6 @@
-"""FileList 已添加文件列表（）。
+"""FileList 已添加文件列表（v0.4.1 P0 S1：依赖从 src.ui.drop_area 改到 src.core.supported）。
 - QListWidget 包装
-- add_files(paths)：过滤不支持扩展名（ drop_area.SUPPORTED_EXTENSIONS）+ 去重
+- add_files(paths)：过滤不支持扩展名（core.supported.SUPPORTED_EXTENSIONS）+ 去重
 - clear() / count() / selected_paths()
 - item 双击 / 选中触发 file_selected(str) signal
 """
@@ -11,7 +11,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
-from src.ui.drop_area import SUPPORTED_EXTENSIONS
+from src.core.supported import SUPPORTED_EXTENSIONS  # v0.4.1 P0 S1
 
 
 class FileList(QListWidget):

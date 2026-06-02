@@ -109,3 +109,69 @@ def test_config_creates_dir_if_missing(isolated_config_home):
     assert not config_dir.exists()
     ConfigManager()
     assert config_dir.is_dir()
+
+
+# ----------- v0.4.1 P0 S2：max_history 范围扩到 1000 -----------
+
+def test_config_max_history_accepts_1000_upper_bound(isolated_config_home):
+    """v0.4.1 P0 S2：max_history 上限扩到 1000（v0.4.0 是 999）。
+
+    验证：
+    - 1000 应被接受（v0.4.1 扩界）
+    - 1001 应被拒绝
+    - 0 应被拒绝（下界）
+    """
+    from src.core.config import AppConfig
+    # 上界 1000：应被接受
+    cfg = AppConfig(max_history=1000)
+    assert cfg.max_history == 1000
+    # 超出 1000：应被拒绝
+    with pytest.raises(TypeError, match=r"max_history must be in \[1, 1000\]"):
+        AppConfig(max_history=1001)
+    # 下界 0：应被拒绝
+    with pytest.raises(TypeError, match=r"max_history must be in \[1, 1000\]"):
+        AppConfig(max_history=0)
+
+
+# ----------- v0.4.1 P0 S1：分层修复 — SUPPORTED_EXTENSIONS 在 core -----------
+
+def test_supported_extensions_lives_in_core_layer(isolated_config_home):
+    """v0.4.1 P0 S1：SUPPORTED_EXTENSIONS / AUDIO_EXTENSIONS SSOT 在 core/supported.py。
+
+    验证：
+    - core/supported.py 模块存在
+    - converter.py 不再 import src.ui.drop_area（仅允许 core）
+    - converter.py 仍可读 SUPPORTED_EXTENSIONS
+    - drop_area 仍可读（re-export 兼容老测试）
+    """
+    from src.core import supported
+    from src.core.supported import AUDIO_EXTENSIONS, SUPPORTED_EXTENSIONS
+    # 集合非空
+    assert len(SUPPORTED_EXTENSIONS) > 0
+    assert len(AUDIO_EXTENSIONS) > 0
+    # 音频集合独立于支持集合（一个被支持，一个被显式拦截）
+    assert AUDIO_EXTENSIONS.isdisjoint(SUPPORTED_EXTENSIONS)
+    # converter 应能 import SUPPORTED（不再依赖 UI 层）
+    from src.core.converter import MarkItDownConverter
+    assert MarkItDownConverter.SUPPORTED is SUPPORTED_EXTENSIONS
+    # drop_area 仍可读（re-export，向后兼容）
+    from src.ui import drop_area
+    assert drop_area.SUPPORTED_EXTENSIONS is SUPPORTED_EXTENSIONS
+    assert drop_area.AUDIO_EXTENSIONS is AUDIO_EXTENSIONS
+    # 二次访问返回的是同一个对象（SSOT 真·唯一）
+    assert supported.SUPPORTED_EXTENSIONS is SUPPORTED_EXTENSIONS
+
+
+def test_converter_does_not_import_drop_area(isolated_config_home):
+    """v0.4.1 P0 S1：converter.py 静态源码不应 import src.ui.drop_area。
+
+    静态扫描 src/core/converter.py，验证没有 from src.ui.drop_area import。
+    """
+    from pathlib import Path
+    converter_path = Path("src/core/converter.py")
+    src = converter_path.read_text(encoding="utf-8")
+    assert "from src.ui.drop_area" not in src, (
+        f"converter.py still imports src.ui.drop_area — layering violation:\n{src[:2000]}"
+    )
+    # 允许 from src.core.supported 出现
+    assert "from src.core.supported" in src

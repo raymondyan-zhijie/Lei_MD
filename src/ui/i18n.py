@@ -1,7 +1,7 @@
-"""i18n for Lei_MD — .
+"""i18n for Lei_MD — A tiny in-house translator.
 
-A tiny in-house translator. Loads a JSON dict of key -> translated string
-for a given locale. Module-level default translator used by ``tr()``.
+Loads a JSON dict of key -> translated string for a given locale.
+Module-level default translator used by ``tr()``.
 """
 from __future__ import annotations
 
@@ -63,8 +63,10 @@ class Translator:
 # Module-level default translator
 _default: Translator = Translator(DEFAULT_LOCALE)
 
-# Try to load a bundled zh_CN.json if present (开发态默认 fallback，让旧
-# import 路径下的 _tr() 行为不变；新代码走 set_locale() 会覆盖 _default)。
+# Try to load a bundled zh_CN.json if present. v0.4.4+ 默认走
+# set_locale() 加载 zh_CN / en_US；这里在 import 阶段 pre-load
+# zh_CN 是为了：未显式调 set_locale() 的旧调用路径（_tr 别名等）
+# 仍能看到中文 fallback。新代码应显式 set_locale()。
 _default_zh_path = _LOCALES_DIR / "zh_CN.json"
 if _default_zh_path.is_file():
     try:

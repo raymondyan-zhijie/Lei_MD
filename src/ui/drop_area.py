@@ -28,6 +28,7 @@ from src.core.supported import (  # noqa: F401
     AUDIO_EXTENSIONS,
     SUPPORTED_EXTENSIONS,
 )
+from src.ui.i18n import tr as _tr
 
 log = logging.getLogger(__name__)
 
@@ -44,11 +45,20 @@ class DropArea(QLabel):
     # v0.4.0 Task C：拖入音频时单独 emit，UI 层据此弹 E_FILE_006 模态
     audio_rejected = Signal(list)  # 参数：被拒的音频绝对路径列表
 
-    DEFAULT_PLACEHOLDER = (
-        "拖拽文件到此处开始转换\n\n"
-        "支持 PDF · Word · Excel · PPT · HTML · EPUB · 图片 · ZIP 等\n"
-        "（音频 MP3/WAV 暂不支持 — 详见 + 路线图）"
-    )
+    # v0.4.5+ D6：占位文案的"格式"模板，三段都走 i18n。
+    # 把硬编码中文拆成 3 个键（旧 DEFAULT_PLACEHOLDER 是 4 行硬编码串），
+    # 切换语言时 reload_language() 调 set_placeholder() 重渲染。
+    # 模板用 \n 分隔，保持原视觉。
+    @staticmethod
+    def _default_placeholder() -> str:
+        """根据当前 locale 拼出占位文案。"""
+        return "\n\n".join(
+            (
+                _tr("drop.placeholder.lead"),
+                _tr("drop.placeholder.formats"),
+                _tr("drop.placeholder.audio_note"),
+            )
+        )
 
     @staticmethod
     def audio_extensions() -> set[str]:
@@ -59,12 +69,19 @@ class DropArea(QLabel):
         super().__init__(parent)
         self.setAcceptDrops(True)
         self.setAlignment(Qt.AlignCenter)  # type: ignore[attr-defined]
-        self.setText(self.DEFAULT_PLACEHOLDER)
+        self.setText(self._default_placeholder())
         # 视觉风格（dashed border + 半透明背景），由 QSS 注入
         self.setObjectName("DropArea")
         self.setProperty("cssClass", "drop-area")
 
     # -------- 公开 API --------
+
+    def set_placeholder(self) -> None:
+        """R4-6/v0.4.5+：reload_language() 调用，重渲染占位文案。
+
+        占位文案本身是 i18n 键，setText 一次即刷新。
+        """
+        self.setText(self._default_placeholder())
 
     def placeholder_text(self) -> str:
         """返回占位提示文本（测试可见）。"""

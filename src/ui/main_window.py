@@ -373,11 +373,17 @@ class MainWindow(QMainWindow):
 
         url = self.yt_url_edit.text().strip()
         if not url:
-            QMessageBox.information(self, "YouTube 抓取", "请先粘贴一个 YouTube URL")
+            QMessageBox.information(
+                self,
+                _tr("youtube.dialog.fetch_title"),
+                _tr("youtube.dialog.empty_url"),
+            )
             return
         if extract_video_id(url) is None:
             QMessageBox.warning(
-                self, "YouTube 抓取", f"不是有效的 YouTube URL：\n{url}"
+                self,
+                _tr("youtube.dialog.fetch_title"),
+                f"{_tr('youtube.dialog.invalid_url')}\n{url}",
             )
             return
         # 防二次点击
@@ -421,7 +427,11 @@ class MainWindow(QMainWindow):
             msg = f"抓取失败：{code}"
 
         self.status.showMessage(f"YouTube 抓取失败：{code}", 5000)
-        QMessageBox.warning(self, "YouTube 抓取失败", f"{msg}\n\n错误码：{code}")
+        QMessageBox.warning(
+            self,
+            _tr("youtube.dialog.fetch_failed_title"),
+            f"{msg}\n\n{_tr('youtube.dialog.fetch_failed_error_code')} {code}",
+        )
         self._reset_youtube_ui()
 
     def _reset_youtube_ui(self) -> None:

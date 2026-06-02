@@ -21,9 +21,18 @@ def drop_area(qapp):
 
 
 def test_drop_area_default_placeholder(drop_area):
-    """默认提示文本应包含「拖拽」字样。"""
+    """默认提示文本应包含「拖入 / drop / drag」类关键词。
+
+    v0.4.5+：占位文案走 i18n。zh 关键词"拖入"，en 关键词"drop"/"drag"。
+    测试接受任一（双语都通过）。
+    """
     text = drop_area.placeholder_text()
-    assert "拖" in text or "drag" in text.lower()
+    text_l = text.lower()
+    assert (
+        "拖" in text
+        or "drop" in text_l
+        or "drag" in text_l
+    ), f"placeholder should indicate 'drop files' / '拖入' / 'drop' / 'drag', got: {text!r}"
 
 
 def test_drop_area_accepts_file_drops(drop_area):

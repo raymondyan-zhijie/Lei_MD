@@ -52,7 +52,11 @@ def test_mainwindow_has_settings_menu_action(app, isolated_config, isolated_hist
         if menu is not None:
             for sub_action in menu.actions():
                 actions_text.append(sub_action.text())
-    assert any("设置" in t for t in actions_text)
+    # v0.4.5+ A4：菜单走 i18n，中英文案都接受
+    assert any(
+        ("设置" in t) or ("Settings" in t) or ("settings" in t.lower())
+        for t in actions_text
+    ), f"settings menu action not found in: {actions_text}"
 
 
 # ────────────────────────────────────────────────────────────────────────

@@ -246,9 +246,13 @@ _TRANSLATOR = Translator()
 def tr(key: str) -> str:
     return _TRANSLATOR.tr(key)
 
-def set_locale(locale: str) -> None:
-    # Whitelist: "system" / "en" / "zh_CN" / "en_US" (v0.2.5 P3 L1)
-    if locale not in ("system", "en", "zh_CN", "en_US"):
+def set_locale(locale: str, translations: dict[str, str] | None = None) -> Translator:
+    # Whitelist: "system" trigger + concrete "en" / "zh_CN" / "en_US" (v0.4.4 R2-3)
+    # "system" 不是字面 locale —— set_locale 看到它会调 _resolve_system_locale()
+    # 解析为具体 locale（$LC_ALL > $LANG > locale.getdefaultlocale()）。
+    if locale == "system":
+        locale = _resolve_system_locale()  # → "zh_CN" / "en_US" / "en" (fallback)
+    if locale not in VALID_LOCALES:  # frozenset({"en", "zh_CN", "en_US"})
         _log.warning("Unknown locale %r, fallback to 'en'", locale)
         locale = "en"
     ...
@@ -256,8 +260,15 @@ def set_locale(locale: str) -> None:
 
 ### 5.2 Translation Files
 
-`src/resources/locales/zh_CN.json`: 53 keys covering menu / status / settings / history / error codes.
-`en.json` is intentionally not provided; missing locale falls back to key names (English keys are already readable).
+`src/resources/locales/zh_CN.json` + `en_US.json`: **bilingual** keys (v0.4.4 R2-3+ shipped en_US.json; v0.4.5 grew to 100+ keys covering menu / toolbar / status / settings / dialogs / YouTube / DropArea).
+
+Locale resolution chain (v0.4.4 R2-3):
+1. `$LC_ALL` environment variable
+2. `$LANG` environment variable
+3. `locale.getdefaultlocale()` (deprecated in py3.11+ but still functional)
+4. Fallback: `"en_US"`
+
+AppConfig.language 存字面 `system / zh_CN / en_US` 之一（v0.5.0 E1 refactor 计划：拆出 use_system_locale 字段，去除双触发器）。
 
 ## 6. Error Handling Design
 

@@ -166,6 +166,43 @@ class MainWindow(QMainWindow):
         # v0.4.2 P1 M4：YouTube 抓取 worker（一次只能跑一个）
         self._active_youtube: YouTubeFetchWorker | None = None
 
+    # -------- 公开 API --------
+
+    def reload_language(self) -> None:
+        """R4-6 v0.4.4+：切换语言后让 MainWindow 重渲染所有可见文字。
+
+        调用方：SettingsDialog._on_accept 写回 cm 后（主窗口实例须
+        注入同一个 ConfigManager），由 ``app.main_window.reload_language()``
+        触发。
+
+        v0.4.5+ A2 重构：从「生命周期」段移到「公开 API」段，定位更准。
+        v0.4.5+ A4 扩展：菜单/工具栏/历史面板标题/About 文案全部走 i18n。
+        """
+        from src.ui.i18n import set_locale as _set_locale
+
+        _set_locale(self._config.get().language)
+        # 重新渲染所有可见文字（之前在 __init__ 一次性 _tr 的）
+        self.setWindowTitle("Lei_MD — MarkItDown GUI")  # 标题本身无 i18n
+        self.cancel_button.setText(_tr("button.cancel"))
+        self.yt_url_edit.setPlaceholderText(_tr("youtube.url.placeholder"))
+        self.yt_fetch_button.setText(_tr("youtube.fetch"))
+        self.status.showMessage(_tr("status.drop_to_start"))
+        # v0.4.5+ A4：菜单/工具栏 6 个 action + 历史面板标题 + About
+        # 都用 _tr() 取值，切换语言时重渲染一遍。
+        # 菜单结构（File/View/Help）由 _build_menus 一次性建好，action
+        # 对象复用，只刷 setText。
+        if hasattr(self, "_act_batch"):
+            self._act_batch.setText(_tr("toolbar.batch"))
+        if hasattr(self, "_act_copy"):
+            self._act_copy.setText(_tr("toolbar.copy"))
+        if hasattr(self, "_act_export"):
+            self._act_export.setText(_tr("toolbar.export"))
+        if hasattr(self, "_act_history"):
+            self._act_history.setText(_tr("menu.history"))
+        # v0.4.5+ D6：drop_area 占位文案是 i18n 拼接，单独方法刷新
+        if hasattr(self, "drop_area"):
+            self.drop_area.set_placeholder()
+
     # -------- slots --------
 
     @Slot(object)
@@ -529,31 +566,6 @@ class MainWindow(QMainWindow):
 
     # -------- 生命周期（  / ）--------
 
-    def reload_language(self) -> None:
-        """R4-6 v0.4.4+：切换语言后让 MainWindow 重渲染所有可见文字。
-
-        调用方：SettingsDialog._on_accept 写回 cm 后（主窗口实例须
-        注入同一个 ConfigManager），由 ``app.main_window.reload_language()``
-        触发。
-
-        行为：
-        1) ``set_locale(self._config.get().language)`` 切换 i18n 上下文
-        2) 重置所有硬编码 ``setText(...)`` / ``setPlaceholderText(...)`` /
-           ``setWindowTitle(...)`` / ``setStatusBarMessage(...)`` 用的
-           ``_tr(key)`` 翻译
-        3) 不重发任何外部 signal（被调用方是 SettingsDialog，主窗口
-           知道自己在 reload）
-        """
-        from src.ui.i18n import set_locale as _set_locale
-
-        _set_locale(self._config.get().language)
-        # 重新渲染所有可见文字（之前在 __init__ 一次性 _tr 的）
-        self.setWindowTitle("Lei_MD — MarkItDown GUI")  # 标题本身无 i18n
-        self.cancel_button.setText(_tr("button.cancel"))
-        self.yt_url_edit.setPlaceholderText(_tr("youtube.url.placeholder"))
-        self.yt_fetch_button.setText(_tr("youtube.fetch"))
-        self.status.showMessage(_tr("status.drop_to_start"))
-
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 (Qt event override)
         """窗口关闭：协作式停掉 batch / worker，避免 QThread 被 force-terminate。
 
@@ -645,38 +657,38 @@ class MainWindow(QMainWindow):
     # -------- 菜单栏（）--------
 
     def _build_menus(self) -> None:
-        """构建菜单栏：文件 / 视图 / 帮助。"""
+        """构建菜单栏：文件 / 视图 / 帮助（v0.4.5+ A4 全部走 i18n）。"""
         menubar = self.menuBar()
 
         # 文件菜单
-        file_menu = menubar.addMenu("文件(&F)")
-        act_settings = file_menu.addAction("设置(&S)...")
+        file_menu = menubar.addMenu(_tr("menu.file_menubar"))
+        act_settings = file_menu.addAction(_tr("menu.settings"))
         act_settings.triggered.connect(self._open_settings_dialog)
         file_menu.addSeparator()
-        act_exit = file_menu.addAction("退出(&X)")
+        act_exit = file_menu.addAction(_tr("menu.exit"))
         act_exit.triggered.connect(self.close)
 
         # 视图菜单
-        view_menu = menubar.addMenu("视图(&V)")
-        self._act_history = view_menu.addAction("历史记录(&H)...")
+        view_menu = menubar.addMenu(_tr("menu.view_menubar"))
+        self._act_history = view_menu.addAction(_tr("menu.history"))
         self._act_history.triggered.connect(self._open_history_panel)
 
-        # 工具栏：批量转换按钮
-        toolbar = self.addToolBar("主工具栏")
+        # 工具栏：批量转换按钮（v0.4.5+ A4 走 i18n）
+        toolbar = self.addToolBar(_tr("toolbar.main"))
         toolbar.setObjectName("MainToolbar")
-        self._act_batch = toolbar.addAction("全部转换")
+        self._act_batch = toolbar.addAction(_tr("toolbar.batch"))
         self._act_batch.triggered.connect(self._start_batch)
         toolbar.addSeparator()
         # v0.4.1 P0 M1：实现 README 声称的"一键复制 Markdown"
-        self._act_copy = toolbar.addAction("复制 Markdown")
+        self._act_copy = toolbar.addAction(_tr("toolbar.copy"))
         self._act_copy.triggered.connect(self._on_copy_clicked)
         # v0.4.1 P0 M2：实现 README 声称的"导出为 .md 文件"
-        self._act_export = toolbar.addAction("导出 .md...")
+        self._act_export = toolbar.addAction(_tr("toolbar.export"))
         self._act_export.triggered.connect(self._on_export_clicked)
 
         # 帮助菜单
-        help_menu = menubar.addMenu("帮助(&H)")
-        act_about = help_menu.addAction("关于 Lei_MD(&A)...")
+        help_menu = menubar.addMenu(_tr("menu.help_menubar"))
+        act_about = help_menu.addAction(_tr("menu.about"))
         act_about.triggered.connect(self._show_about)
 
     def _open_settings_dialog(self) -> None:
@@ -696,25 +708,22 @@ class MainWindow(QMainWindow):
                 pass
 
     def _open_history_panel(self) -> None:
-        """打开历史记录对话框（模态只读视图）。"""
+        """打开历史记录面板（v0.4.5+ A4 标题走 i18n）。"""
         from src.ui.history_panel import HistoryPanel
 
         if self._history is None:
-            self.status.showMessage("历史功能未启用")
+            self.status.showMessage(_tr("dialog.history.disabled"))
             return
         dlg = HistoryPanel(self._history, parent=self)
-        dlg.setWindowTitle("历史记录")
+        dlg.setWindowTitle(_tr("history.panel_title"))
         dlg.resize(800, 500)
         dlg.show()  # 非模态，可与主窗口并存
 
     def _show_about(self) -> None:
         QMessageBox.about(
             self,
-            "关于 Lei_MD",
-            (
-                "Lei_MD\n\n基于 MarkItDown 的桌面 GUI 工具\n\n"
-                "仓库: github.com/raymondyan-zhijie/Lei_MD"
-            ),
+            _tr("about.title"),
+            _tr("about.body"),
         )
 
     # -------- 批量转换（）--------

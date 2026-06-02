@@ -18,7 +18,7 @@ Drag a file → auto-convert → live preview → one-click export. **Let non-te
 | 📋 **One-click copy** | Copy the converted result to clipboard |
 | 💾 **Export to file** | Export as `.md` file (UTF-8) |
 | 🎨 **Dark mode** | Follows Windows system theme automatically |
-| 🌏 **Bilingual UI** | 中文 / English |
+| 🌏 **Bilingual UI** | 中文 / English (v0.4.5+ window refreshes immediately on language switch, **no restart required**) |
 | 📜 **History** | SQLite-backed, keeps the last 50 entries |
 | 🔒 **Local-first** | Offline by default; the only network feature is YouTube subtitle fetching (v0.4.0+) |
 | ⚠️ **Error code system** | 5 categories (E_FILE / E_CONVERT / E_SYS / E_INTERNAL / E_UPDATE), all with regression tests |

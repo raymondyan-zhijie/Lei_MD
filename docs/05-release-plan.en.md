@@ -12,6 +12,7 @@
 > - §3 Deliverable forms (NSIS installer size, download channels)
 >
 > Upstream dependency update flow: see [06-dependency-update-strategy.md](06-dependency-update-strategy.md).
+> Build and packaging flow: see [07-build-release.md](07-build-release.md).
 
 ---
 

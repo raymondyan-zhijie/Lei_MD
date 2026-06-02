@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -21,8 +22,15 @@ DEFAULT_LOCALE = "en"
 # "en" 表示 keys 不翻译、UI 字符串保持源代码硬编码（tr() 在仍未接 UI）。
 VALID_LOCALES: frozenset[str] = frozenset({"system", "en", "zh_CN", "en_US"})
 
-# Built-in resource directory
-_LOCALES_DIR = Path(__file__).resolve().parent.parent / "resources" / "locales"
+# Built-in resource directory.
+# - In dev (running from source): src/ui/i18n.py → ../../src/resources/locales
+# - In frozen (PyInstaller onefile): sys._MEIPASS is the bundle root, where
+#   the spec's `datas` placed resources/locales/. Falling back to that
+#   path makes the same code work in both modes.
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    _LOCALES_DIR = Path(sys._MEIPASS) / "resources" / "locales"
+else:
+    _LOCALES_DIR = Path(__file__).resolve().parent.parent / "resources" / "locales"
 
 class Translator:
     """Holds translations for one locale and looks up keys."""

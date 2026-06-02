@@ -12,6 +12,7 @@
 > - §3 交付物形态（NSIS 安装包大小、下载渠道）
 >
 > 上游依赖更新流程详见 [06-dependency-update-strategy.md](06-dependency-update-strategy.md)。
+> 构建与打包流程详见 [07-build-release.md](07-build-release.md)。
 
 ---
 

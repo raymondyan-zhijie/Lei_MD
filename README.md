@@ -51,6 +51,10 @@ pip install -e ".[dev]"
 python src/main.py
 ```
 
+### 打包 Windows .exe
+
+参见 [docs/07-build-release.md](docs/07-build-release.md)（一行 `pwsh scripts/build-windows.ps1` 出 `.exe` 和 `Setup.exe`）。
+
 ## 📸 截图
 
 > 待补充

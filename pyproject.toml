@@ -1,6 +1,6 @@
 [project]
 name = "lei-md"
-version = "0.4.0"
+version = "0.4.1"
 description = "Windows GUI for Microsoft MarkItDown - convert files to Markdown with drag & drop, offline and all-in-one"
 authors = [{name = "leimengde"}]
 license = {text = "MIT"}
@@ -59,6 +59,13 @@ packages = ["src", "src.ui", "src.core"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+# Spec/scripts/docs aren't checked (PyInstaller spec is build-only,
+# PowerShell + NSIS are not Python, Markdown doesn't lint here).
+extend-exclude = [
+    "Lei_MD.spec",
+    "scripts",
+    "installer",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]

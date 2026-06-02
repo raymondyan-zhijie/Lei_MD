@@ -51,6 +51,10 @@ pip install -e ".[dev]"
 python src/main.py
 ```
 
+### Building a Windows .exe
+
+See [docs/07-build-release.md](docs/07-build-release.md) (one-line `pwsh scripts/build-windows.ps1` produces `.exe` and `Setup.exe`).
+
 > ⚠️ **Test command** (run before any commit):
 > ```bash
 > source .venv/bin/activate   # on Linux/macOS

@@ -111,8 +111,14 @@ excludes = [
     "scipy",
     "pytest",
     "pytestqt",
-    # Trim some large unused stdlib bits
-    "xml.dom.minidom",
+    # NOTE: do NOT exclude `xml.dom.minidom` or `xml.etree.*` — the
+    # defusedxml package re-exports from these stdlib modules at
+    # runtime (e.g. `defusedxml.minidom` does `from xml.dom.minidom
+    # import *`). Markitdown's `_rss_converter` and `_html_converter`
+    # import defusedxml, so excluding the stdlib aliases would crash
+    # the bundled exe with `ModuleNotFoundError: No module named
+    # 'xml.dom.minidom'`. Defusedxml exists specifically to wrap
+    # these (with XXE protection), so we want them present.
     "unittest",
     "pydoc",
 ]

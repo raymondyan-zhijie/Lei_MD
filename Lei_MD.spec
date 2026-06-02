@@ -23,7 +23,11 @@ import tomllib
 # of truth). The build script does the same so the two stay in lockstep.
 # ──────────────────────────────────────────────────────────────────────
 APP_NAME = "Lei_MD"
-_PYPROJECT = Path(__file__).resolve().parent / "pyproject.toml"
+# SPECPATH is a global that PyInstaller injects when executing the spec
+# (absolute path to the spec file's directory). It is the only reliable
+# location reference inside a spec — `__file__` is NOT defined here
+# (PyInstaller 6.20+ strict mode raises NameError on `__file__`).
+_PYPROJECT = Path(SPECPATH) / "pyproject.toml"
 APP_VERSION = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))["project"]["version"]
 ENTRY = "src/main.py"
 ICON = "src/resources/icons/app.ico"  # see "Icon note" below

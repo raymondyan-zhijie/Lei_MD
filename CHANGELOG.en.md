@@ -7,6 +7,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-06-02
+
+Second governance patch after v0.4.3. **Covers P0 + 1 P1 (R4-6) from the 19-item second expert review, 5 commits total**. **275/275 tests green**. **CI #18 8/8 green**.
+
+### Fixed
+
+- **R2-1 (df7f1bb)** LLM image description deprecation: UI widget kept but `setEnabled(False)` + "disabled since v0.4.4" label; converter `llm_api_key=` param removed; monkey-patch comment cleaned; README 4 LLM mentions updated to "暂未实现"; also "完全离线" → "本地优先" (marks R4-1 scope)
+- **R2-2 (b9e918d)** output_dir config wired to export flow: new `MainWindow._resolve_output_dir()` helper ("same" → None; "custom" checks exists + is_dir + writable); `_on_export_clicked` uses `out_dir` as QFileDialog initial path; `_on_batch_item_finished` auto-exports same-name .md to `out_dir` in batch; `errors.py` adds `E_SYS_002` registration
+- **R2-3 (a49662a)** `set_locale("system")` resolution + en_US.json 71 keys: removed `"system"` from whitelist (becomes trigger); new `_resolve_system_locale()` walks `LC_ALL > LANG > getdefaultlocale()` resolving to zh_CN/en_US; new `src/resources/locales/en_US.json` (71 keys fully translated)
+- **R3-6 (d3a2932)** `src/resources/__init__.py` package marker: was missing, so setuptools wheel packaging did not include `locales/*.json` in `package_data`; after install, set_locale("zh_CN") couldn't find JSON → UI fell back to English
+- **R4-6 (cc1bad9)** Window refreshes immediately on language switch (no more restart required): `ConfigManager.on_change(callback)` callback list + `MainWindow._on_config_changed` calls `reload_language()` + `apply_theme()`
+
+### Fixed (R4-6 side effects)
+
+- **R2-2 real bug fix**: `_resolve_output_dir()` popped QMessageBox.warning (modal) on every call → batch converting N files popped N dialogs → added `_warn` param + `_output_dir_warned_for` cache for de-duplication
+- **R2-3 tail fix**: en_US.json's `status.converting` was missing `{done}/{total}` and `status.cancelling` was missing `...` format placeholders
+- **i18n keys added**: `status.drop_to_start`, `button.cancel` (bilingual zh+en)
+
+### Changed
+
+- i18n protocol alignment: all visible text must go through `tr(key)`, `_tr("button.cancel")` / `_tr("status.drop_to_start")` etc. replace hardcoded Chinese
+- ConfigManager.on_change callback replaces Qt signal (keeps CM as pure Python object, testable without QApplication instance)
+
+### Verified
+
+- ✅ 275/275 tests green (v0.4.3 → v0.4.4: +28)
+- ✅ ruff 0 errors
+- ✅ CI #18 8/8 matrix green (Ubuntu+Windows × 3.10/3.11/3.12/3.13)
+- ✅ origin/main = cc1bad9 double-verified
+- ✅ release id 333042901
+
 ## [0.4.3] - 2026-06-02
 
 First governance patch after v0.4.2. **Covers the first 5 of 19 P0 items from the second expert review**. **247/247 tests green**.

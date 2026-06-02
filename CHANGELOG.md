@@ -7,6 +7,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-06-02
+
+v0.4.3 之后的第二个治理 patch。**专家审查第二批 19 项中的 P0 + 1 项 P1（R4-6），共 5 commit**。**275/275 测试绿**。**CI #18 8/8 绿**。
+
+### Fixed
+
+- **R2-1 (df7f1bb)** LLM 图片描述功能撤场：UI widget 保留但 `setEnabled(False)` + "disabled since v0.4.4" 标签；converter 删 `llm_api_key=` 参数；monkey-patch 注释清理；README 4 处 LLM 文字改 "暂未实现"；同步改 "完全离线" → "本地优先"（标 R4-1 范围）
+- **R2-2 (b9e918d)** output_dir 配置接 export 流：新增 `MainWindow._resolve_output_dir()` 辅助（"same" 返回 None；"custom" 检查路径存在 + 是目录 + 可写）；`_on_export_clicked` 用 `out_dir` 作 QFileDialog 初始路径；`_on_batch_item_finished` 批量自动导出同名 .md 到 `out_dir`；`errors.py` 补 `E_SYS_002` 登记
+- **R2-3 (a49662a)** `set_locale("system")` 解析 + en_US.json 71 keys：移除 `"system"` 白名单（变触发器）；新增 `_resolve_system_locale()` 走 `LC_ALL > LANG > getdefaultlocale()` 解析为 zh_CN/en_US；新建 `src/resources/locales/en_US.json`（71 keys 全翻译）
+- **R3-6 (d3a2932)** `src/resources/__init__.py` package marker：之前缺 `__init__.py`，setuptools wheel 打包时 `package_data` 不会包含 `locales/*.json`，安装后 set_locale("zh_CN") 找不到 JSON → UI 全英文 fallback
+- **R4-6 (cc1bad9)** 切换语言后窗口立即刷新（不再需要重启）：`ConfigManager.on_change(callback)` 回调列表 + `MainWindow._on_config_changed` 调 `reload_language()` + `apply_theme()`
+
+### Fixed (R4-6 顺带)
+
+- **R2-2 真 bug 修复**：`_resolve_output_dir()` 每次调都弹 QMessageBox.warning（模态），batch 转 N 个文件弹 N 次对话框 → 加 `_warn` 参数 + `_output_dir_warned_for` 缓存去重
+- **R2-3 残尾**：en_US.json 旧版 `status.converting` 漏 `{done}/{total}`、`status.cancelling` 漏 `...` 格式占位符
+- **i18n 键新增**：`status.drop_to_start`、`button.cancel`（zh+en 双语同步）
+
+### Changed
+
+- i18n 协议对齐：所有可见文字必须走 `tr(key)`，`_tr("button.cancel")` / `_tr("status.drop_to_start")` 等取代硬编码中文
+- ConfigManager.on_change 回调替代 Qt signal（保持 CM 纯 Python 对象，测试可无 QApplication 实例化）
+
+### Verified
+
+- ✅ 275/275 测试绿（v0.4.3 → v0.4.4: +28）
+- ✅ ruff 0 errors
+- ✅ CI #18 8/8 矩阵绿（Ubuntu+Windows × 3.10/3.11/3.12/3.13）
+- ✅ origin/main = cc1bad9 二次验证
+- ✅ release id 333042901
+
 ## [0.4.3] - 2026-06-02
 
 v0.4.2 之后的首个治理 patch。**专家审查第二批 19 项中的前 5 项 P0**。**247/247 测试绿**。

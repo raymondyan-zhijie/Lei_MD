@@ -8,7 +8,7 @@
 入口职责：
 1. 创建/获取 QApplication 单例
 2. 调用 LeiMDApp.configure_application 设置元数据
-3. 实例化 MainWindow（ 才实现完整）
+3. 装配依赖：ConfigManager → HistoryManager → MainWindow
 4. 显示窗口 + 进入事件循环
 """
 from __future__ import annotations
@@ -47,10 +47,16 @@ def main() -> int:
     # 设置应用元数据
     LeiMDApp.configure_application(app)
 
-    # 实例化主窗口（ 完整实现；现在先占位）
+    # 实例化主窗口，按 README 承诺连入历史记录与配置。
+    # ConfigManager 先装，再按用户的 max_history 构造 HistoryManager，
+    # 最后注入 MainWindow。这样单文件转换会自动写入历史库（P0.3）。
+    from src.core.config import ConfigManager
+    from src.core.history import HistoryManager
     from src.ui.main_window import MainWindow  # 延迟导入，避免循环引用
 
-    window = MainWindow()
+    config_manager = ConfigManager()
+    history = HistoryManager(max_entries=config_manager.get().max_history)
+    window = MainWindow(config_manager=config_manager, history=history)
     window.show()
 
     return app.exec()

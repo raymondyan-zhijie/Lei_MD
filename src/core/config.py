@@ -20,9 +20,18 @@ def config_dir() -> Path:
     """跨平台配置目录：Windows %APPDATA%，Linux/macOS $XDG_CONFIG_HOME。
 
     每次调用都重新读 env（测试 monkeypatch 友好）。
+
+    Windows 平台：优先读 ``XDG_CONFIG_HOME``（如果设置）— 用途是让
+    CI 测试 ``monkeypatch.setenv('XDG_CONFIG_HOME', ...)`` 跨平台生效，
+    不污染真实 %APPDATA%。production 默认仍走 %APPDATA%。
     """
     if os.name == "nt":
-        base = Path(os.environ.get("APPDATA", Path.home()))
+        # Windows: prefer XDG_CONFIG_HOME for test isolation; fall back to APPDATA.
+        xdg = os.environ.get("XDG_CONFIG_HOME")
+        if xdg:
+            base = Path(xdg)
+        else:
+            base = Path(os.environ.get("APPDATA", Path.home()))
     else:
         xdg = os.environ.get("XDG_CONFIG_HOME")
         base = Path(xdg) if xdg else Path.home() / ".config"

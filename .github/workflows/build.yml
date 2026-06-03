@@ -64,8 +64,12 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
-      - name: Install NSIS (when with_installer)
-        if: github.event_name == 'workflow_dispatch' && inputs.with_installer
+      - name: Install NSIS (tag push default + manual opt-in)
+        # v0.4.8: BUG FIX — previous if checked only workflow_dispatch,
+        # so tag push always skipped NSIS even when default was true.
+        # Now: tag push → always install NSIS (default true), OR manual
+        # dispatch AND user opted in.
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.with_installer)
         shell: pwsh
         run: |
           choco install nsis -y --no-progress
@@ -87,7 +91,10 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $withInstaller = $env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and $env:WITH_INSTALLER -eq 'true'
+          # v0.4.8: BUG FIX — was checking 'workflow_dispatch' only.
+          # Now: tag push → always build installer, OR manual dispatch
+          # AND user opted in.
+          $withInstaller = $env:GITHUB_EVENT_NAME -eq 'push' -or $env:WITH_INSTALLER -eq 'true'
           $args = @{}
           if ($withInstaller) { $args['WithInstaller'] = $true }
           & pwsh ./scripts/build-windows.ps1 @args

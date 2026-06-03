@@ -18,6 +18,8 @@ from pathlib import Path
 
 import tomllib
 
+import magika  # v0.4.9: locate the on-disk `magika/models/` directory for datas bundle
+
 # ──────────────────────────────────────────────────────────────────────
 # Project metadata — version is read from pyproject.toml (single source
 # of truth). The build script does the same so the two stay in lockstep.
@@ -108,6 +110,20 @@ hiddenimports = [
 datas = [
     # (source, dest-dir-in-bundle)
     ("src/resources/locales", "resources/locales"),
+    # v0.4.9: magika ships its ML model directory at
+    # `<site-packages>/magika/models/standard_v3_3/` (~3.2 MB). PyInstaller's
+    # hook for magika does NOT bundle this directory — at runtime magika
+    # raises `MagikaError: model dir not found at
+    # <sys._MEIPASS>/magika/models/standard_v3_3` the first time it
+    # initialises (i.e. on the first file conversion). Markitdown's
+    # _pdf_converter / _docx_converter / _pptx_converter / _xlsx_converter
+    # all import magika for content-type detection, so EVERY conversion
+    # fails. Pin the path explicitly via `Path(magika.__file__).parent`
+    # so the spec stays correct across dev-venv and CI locations.
+    (
+        str(Path(magika.__file__).parent / "models"),
+        "magika/models",
+    ),
     # NOTE: src/resources/icons intentionally NOT bundled yet — no
     # .ico file ships in v0.4.5. See ICON comment above for the steps
     # to enable it (and remember to create the dir + .gitkeep first).

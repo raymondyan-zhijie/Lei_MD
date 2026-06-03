@@ -1,6 +1,6 @@
 [project]
 name = "lei-md"
-version = "0.4.8"
+version = "0.4.9"
 description = "Windows GUI for Microsoft MarkItDown - convert files to Markdown with drag & drop, offline and all-in-one"
 authors = [{name = "leimengde"}]
 license = {text = "MIT"}

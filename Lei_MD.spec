@@ -110,19 +110,26 @@ hiddenimports = [
 datas = [
     # (source, dest-dir-in-bundle)
     ("src/resources/locales", "resources/locales"),
-    # v0.4.9: magika ships its ML model directory at
-    # `<site-packages>/magika/models/standard_v3_3/` (~3.2 MB). PyInstaller's
-    # hook for magika does NOT bundle this directory — at runtime magika
-    # raises `MagikaError: model dir not found at
-    # <sys._MEIPASS>/magika/models/standard_v3_3` the first time it
-    # initialises (i.e. on the first file conversion). Markitdown's
-    # _pdf_converter / _docx_converter / _pptx_converter / _xlsx_converter
-    # all import magika for content-type detection, so EVERY conversion
-    # fails. Pin the path explicitly via `Path(magika.__file__).parent`
+    # v0.4.9: magika ships two on-disk data directories that PyInstaller's
+    # magika hook does NOT bundle:
+    #   - <site-packages>/magika/models/standard_v3_3/  (~3.2 MB ONNX +
+    #     config.min.json + metadata.json) — the ML model that magika uses
+    #     for content-type detection. Missing → MagikaError: model dir not
+    #     found at <_MEIPASS>/magika/models/standard_v3_3
+    #   - <site-packages>/magika/config/content_types_kb.min.json
+    #     (~44 KB) — the content-type knowledge base (text->label map).
+    #     Missing → FileNotFoundError on the first conversion:
+    #       FileNotFoundError: [Errno 2] No such file or directory:
+    #       '<_MEIPASS>/magika/config/content_types_kb.min.json'
+    # Pin both source paths explicitly via `Path(magika.__file__).parent`
     # so the spec stays correct across dev-venv and CI locations.
     (
         str(Path(magika.__file__).parent / "models"),
         "magika/models",
+    ),
+    (
+        str(Path(magika.__file__).parent / "config"),
+        "magika/config",
     ),
     # NOTE: src/resources/icons intentionally NOT bundled yet — no
     # .ico file ships in v0.4.5. See ICON comment above for the steps
